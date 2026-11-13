@@ -12,7 +12,7 @@
   const GHOST = "#D9D5CC", GHOST_OPACITY = 0.12, NOT_STARTED_OPACITY = 0.45;
 
   const T = {
-    title: ["Статус на проекта", "Project status"],
+    title: ["Статус", "Status"],
     colour: ["Оцвети по статус", "Colour by status"], view: ["Запази изглед", "Save view"],
     asOf: ["Към дата", "As of date"], asOfLbl: ["Състояние към", "Status as of"], today: ["Днес", "Today"],
     overall: ["Общ напредък", "Overall progress"], pours: ["По тактове", "By pour"], timeline: ["Хронология", "Timeline"],
