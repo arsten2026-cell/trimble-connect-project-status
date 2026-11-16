@@ -79,10 +79,14 @@
       rebar: toNum(o.props[C.P.rebar]), formwork: (toNum(o.props[C.P.fwSides]) || 0) + (toNum(o.props[C.P.fwBottom]) || 0) });
   }
   async function loadRecords(lib) {
+    // "$" links (F4): Pour status writes the URL-encoded link; records still under the old raw-"$" link are read too
+    // (encoded wins), so no pour drops out before they are moved in Pour status ("Премести").
+    const LK = window.ArstenLinks;
     const links = state.objects.map((o) => S.entityLink(o.guid));
+    const legacy = state.objects.filter((o) => LK.hasLegacy(o.guid)).map((o) => LK.legacyLink(o.guid));
     const got = await state.client.readMany(lib.id, S.DEF_ID, links);
-    const all = new Map();
-    for (const [link, props] of got) all.set(link.replace(/^frn:entity:/, ""), props);
+    const raw = legacy.length ? await state.client.readMany(lib.id, S.DEF_ID, legacy) : new Map();
+    const all = P.fromPsets(got, raw);
     // keep only what clients may see (steps, "without", dates)
     state.records = P.recordsAsOf(all, "");
     const range = P.dateRange(state.records);

@@ -1,0 +1,18 @@
+{
+  "panel": "project-status",
+  "repo": "arsten2026-cell/trimble-connect-project-status",
+  "id": "c4accf4f80",
+  "built": "2026-11-16T21:53:08.021Z",
+  "files": {
+    "app.js": "a2b656897a",
+    "progress.js": "b0318bd2d0",
+    "common.js": "a04c428e31",
+    "status.js": "157dd5a2f6",
+    "psetapi.js": "cb56112323",
+    "arsten-access.js": "c29c3b3f4f",
+    "arsten-links.js": "7bf607a606",
+    "manifest.json": "6f9658d58e",
+    "icon.svg": "15aedc4336",
+    "index.html": "6aa412bd1b"
+  }
+}

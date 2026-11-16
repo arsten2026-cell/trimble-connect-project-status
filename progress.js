@@ -1,14 +1,24 @@
 // Project status (client view): progress figures from the Pour status records. Read-only, no network here.
 // Uses PourStatus (status.js) for the steps and stages. Browser: window.ProjectProgress; Node: require.
+// Pset links: shared/arsten-links.js (window.ArstenLinks), copied next to this file on publish.
 (function (root, factory) {
-  const S = typeof module === "object" && module.exports ? require("./status.js") : root.PourStatus;
-  const lib = factory(S);
-  if (typeof module === "object" && module.exports) module.exports = lib;
+  const node = typeof module === "object" && module.exports;
+  const linksNode = () => { try { return require("../shared/arsten-links.js"); } catch { return require("./arsten-links.js"); } };
+  const lib = factory(node ? require("./status.js") : root.PourStatus, node ? linksNode() : root.ArstenLinks);
+  if (node) module.exports = lib;
   else root.ProjectProgress = lib;
-})(typeof self !== "undefined" ? self : this, function (S) {
+})(typeof self !== "undefined" ? self : this, function (S, LK) {
   "use strict";
 
   const dateOk = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
+
+  /**
+   * Status records keyed by GUID from the two reads of Pour status records ("$" links, F4): enc = Map link -> props
+   * read under the URL-encoded link, raw = the same under the old raw-"$" link. The encoded record wins (a raw one
+   * newer than it is merged, as Pour status shows it), so no pour drops out while records are not yet moved.
+   * Read-only: nothing is moved here.
+   */
+  const fromPsets = (enc, raw) => LK.resolve(enc, raw).records;
 
   /**
    * A record as it was at the end of a date (YYYY-MM-DD): steps dated later are not done yet. No date: as now.
@@ -134,5 +144,5 @@
     return min ? { min, max } : null;
   }
 
-  return { UNIT, recordAsOf, recordsAsOf, overall, perPour, timeline, dateRange };
+  return { UNIT, fromPsets, recordAsOf, recordsAsOf, overall, perPour, timeline, dateRange };
 });
