@@ -34,27 +34,39 @@
     return out;
   }
 
+  // Each step is measured in its own quantity (user 16.11.2026: formwork was shown in m³): formwork and stripping by
+  // formwork area (sides + bottom, m²), rebar by weight (kg), poured by concrete volume (m³) - as in S.STEP_QTY.
+  // A model without that quantity (older pour export) falls back to concrete volume, then to the object count.
+  const UNIT = { volume: "m³", formwork: "m²", rebar: "kg" };
+  const qtyOf = (o, key) => (typeof o[key] === "number" && isFinite(o[key]) ? o[key] : 0);
+
   /**
-   * Overall progress per step, by concrete volume and by count. A step marked "without" counts as covered.
-   * @param objects [{guid, volume, pour}]; records Map guid -> record (client-safe)
-   * @returns {total:{count, volume}, steps:{formwork:{count, volume, pct}, ...}, poursComplete:{formwork: n, ...}, pours}
+   * Overall progress per step, each in its own quantity, and by count. A step marked "without" counts as covered.
+   * @param objects [{guid, pour, volume, formwork, rebar}]; records Map guid -> record (client-safe)
+   * @returns {total:{count, volume}, steps:{formwork:{count, qty, total, unit, pct}, ...}, poursComplete:{formwork: n, ...}, pours}
    */
   function overall(objects, records) {
     const total = { count: objects.length, volume: 0 };
-    const steps = {};
-    for (const st of S.STEPS) steps[st.id] = { count: 0, volume: 0, pct: 0 };
+    const sums = { volume: 0, formwork: 0, rebar: 0 };
+    for (const o of objects) for (const k of Object.keys(sums)) sums[k] += qtyOf(o, k);
+    total.volume = sums.volume;
+    const steps = {}, keyOf = {};
+    for (const st of S.STEPS) {
+      const want = S.STEP_QTY[st.id] || "volume";
+      const key = sums[want] > 0 ? want : sums.volume > 0 ? "volume" : null;
+      keyOf[st.id] = key;
+      steps[st.id] = { count: 0, qty: 0, total: key ? sums[key] : 0, unit: key ? UNIT[key] : "", pct: 0 };
+    }
     const byPour = new Map();
     for (const o of objects) {
-      const v = typeof o.volume === "number" && isFinite(o.volume) ? o.volume : 0;
-      total.volume += v;
       const rec = records.get(o.guid);
       if (!byPour.has(o.pour)) byPour.set(o.pour, []);
       byPour.get(o.pour).push(rec);
-      for (const st of S.STEPS) if (rec && rec[st.id]) { steps[st.id].count++; steps[st.id].volume += v; }
+      for (const st of S.STEPS) if (rec && rec[st.id]) { steps[st.id].count++; if (keyOf[st.id]) steps[st.id].qty += qtyOf(o, keyOf[st.id]); }
     }
     for (const st of S.STEPS) {
       const s = steps[st.id];
-      s.pct = total.volume > 0 ? s.volume / total.volume : total.count ? s.count / total.count : 0;
+      s.pct = s.total > 0 ? s.qty / s.total : total.count ? s.count / total.count : 0;
     }
     const poursComplete = {};
     for (const st of S.STEPS) poursComplete[st.id] = [...byPour.values()].filter((recs) => recs.every((r) => r && r[st.id])).length;
@@ -85,7 +97,8 @@
   }
 
   /**
-   * What was done when, newest first: one line per date + pour + step, with object count and volume.
+   * What was done when, newest first: one line per date + pour + step, with object count and the step's quantity
+   * (formwork/stripping m², rebar kg, poured m³; qty 0 when the model has no such quantity).
    * "Without" steps are not events (nothing was built).
    */
   function timeline(objects, records) {
@@ -98,9 +111,10 @@
         const d = r[`${st.id}_date`];
         if (!dateOk(d)) continue;
         const k = `${d}|${o.pour}|${st.id}`;
-        if (!ev.has(k)) ev.set(k, { date: d, pour: o.pour, step: st.id, count: 0, volume: 0 });
+        const key = S.STEP_QTY[st.id] || "volume";
+        if (!ev.has(k)) ev.set(k, { date: d, pour: o.pour, step: st.id, count: 0, qty: 0, unit: UNIT[key], key });
         const e = ev.get(k);
-        e.count++; e.volume += typeof o.volume === "number" && isFinite(o.volume) ? o.volume : 0;
+        e.count++; e.qty += qtyOf(o, key);
       }
     }
     const order = S.STEPS.map((s) => s.id);
@@ -120,5 +134,5 @@
     return min ? { min, max } : null;
   }
 
-  return { recordAsOf, recordsAsOf, overall, perPour, timeline, dateRange };
+  return { UNIT, recordAsOf, recordsAsOf, overall, perPour, timeline, dateRange };
 });

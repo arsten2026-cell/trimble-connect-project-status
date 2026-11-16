@@ -17,7 +17,7 @@
     asOf: ["Към дата", "As of date"], asOfLbl: ["Състояние към", "Status as of"], today: ["Днес", "Today"],
     overall: ["Общ напредък", "Overall progress"], pours: ["По тактове", "By pour"], timeline: ["Хронология", "Timeline"],
     more: ["Покажи всички", "Show all"], pour: ["Такт", "Pour"], other: ["Друго в модела (прозрачно)", "Rest of the model (ghosted)"],
-    byVolume: ["по обем бетон", "by concrete volume"], poursDone: ["тактове завършени", "pours complete"],
+    byVolume: ["кофраж и декофриране по m², армировка по kg, бетон по m³", "formwork and stripping by m², rebar by kg, concrete by m³"], poursDone: ["тактове завършени", "pours complete"],
     noEvents: ["Още няма отбелязани етапи.", "No stages recorded yet."],
     noLib: ["Статусите на тактовете още не са настроени в този проект.", "Pour statuses are not set up in this project yet."],
     noPours: ["В заредените модели няма тактове (Tekla IFC с Pour/Такт).", "No pours in the loaded models (Tekla IFC with Pour/Такт)."],
@@ -75,7 +75,8 @@
     const { pours, unnumbered } = C.groupPours(items);
     state.pours = [...pours, ...unnumbered];
     state.objects = [];
-    for (const g of state.pours) for (const o of g.objects) state.objects.push({ modelId: o.modelId, id: o.id, guid: o.guid, pour: g.label, volume: toNum(o.props[C.P.volume]) });
+    for (const g of state.pours) for (const o of g.objects) state.objects.push({ modelId: o.modelId, id: o.id, guid: o.guid, pour: g.label, volume: toNum(o.props[C.P.volume]),
+      rebar: toNum(o.props[C.P.rebar]), formwork: (toNum(o.props[C.P.fwSides]) || 0) + (toNum(o.props[C.P.fwBottom]) || 0) });
   }
   async function loadRecords(lib) {
     const links = state.objects.map((o) => S.entityLink(o.guid));
@@ -133,7 +134,7 @@
     const o = P.overall(state.objects, recs);
     $("overall").innerHTML = S.STEPS.map((st) => {
       const s = o.steps[st.id];
-      return `<div class="stat"><div class="hd"><b>${esc(stepName(st))}</b><span class="num">${fmtNum(s.pct * 100, 0)}% · ${fmtNum(s.volume, 1)} / ${fmtNum(o.total.volume, 1)} m³</span></div>
+      return `<div class="stat"><div class="hd"><b>${esc(stepName(st))}</b><span class="num">${fmtNum(s.pct * 100, 0)}%${s.unit ? ` · ${fmtNum(s.qty, s.unit === "kg" ? 0 : 1)} / ${fmtNum(s.total, s.unit === "kg" ? 0 : 1)} ${s.unit}` : ""}</span></div>
         <div class="track"><div class="fill" style="width:${Math.min(100, s.pct * 100).toFixed(1)}%;background:${st.colour}"></div></div>
         <div class="sub">${o.poursComplete[st.id]} / ${o.pours} ${esc(t("poursDone"))}</div></div>`;
     }).join("") + `<div class="note">${esc(t("byVolume"))} · ${o.total.count} ${esc(t("objects"))}</div>`;
@@ -152,7 +153,7 @@
     const shown = state.showAll ? tl : tl.slice(0, 30);
     const stepById = Object.fromEntries(S.STEPS.map((s) => [s.id, s]));
     $("timeline").innerHTML = shown.length ? shown.map((e) => `<li><span class="d">${esc(fmtDate(e.date))}</span><span class="dot" style="background:${stepById[e.step].colour}"></span>
-      <span><b>${esc(e.pour)}</b> · ${esc(stepName(stepById[e.step]))}<br><span class="sub">${e.count} ${esc(t("objects"))}${e.volume >= 0.05 ? ` · ${fmtNum(e.volume, 1)} m³` : ""}</span></span></li>`).join("")
+      <span><b>${esc(e.pour)}</b> · ${esc(stepName(stepById[e.step]))}<br><span class="sub">${e.count} ${esc(t("objects"))}${e.qty >= 0.05 ? ` · ${fmtNum(e.qty, e.unit === "kg" ? 0 : 1)} ${e.unit}` : ""}</span></span></li>`).join("")
       : `<li class="sub">${esc(t("noEvents"))}</li>`;
     $("btnMore").hidden = state.showAll || tl.length <= 30;
   }
