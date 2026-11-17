@@ -129,9 +129,14 @@
     const events = CS.timelineOf(sum).filter((e) => e.date > from && e.date <= sum.date);
     const done = `<h2 class="rep-h2">${esc(t("period"))} <span class="sub">(${esc(f.date(CS.addDays(from, 1)))} – ${esc(f.date(sum.date))})</span></h2>`
       + (events.length ? `<ul class="rep-l">${events.map((e) => `<li><span class="d">${esc(f.date(e.date))}</span> <b>${esc(e.pour)}</b> · ${esc(f.stage(e.step))}</li>`).join("")}</ul>` : `<p class="sub">${esc(t("none"))}</p>`);
+    // photos of an entry (client copies): o.photoUrl(id) gives the download URL ("" / missing = left out)
+    const photosOf = (x) => {
+      const urls = (x.photos || []).map((id) => (o.photoUrl ? o.photoUrl(id) : "")).filter(Boolean);
+      return urls.length ? `<span class="rep-ph">${urls.map((u) => `<img src="${esc(u)}" alt="">`).join("")}</span>` : "";
+    };
     // site works (version 4): the ones done in the period, oldest first; no section when there are none
     const siteRows = (sum.site || []).filter((x) => x && x.date > from && x.date <= sum.date).slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-    const site = siteRows.length ? `<h2 class="rep-h2">${esc(t("site"))}</h2><ul class="rep-l rep-site">${siteRows.map((x) => `<li><span class="d">${esc(f.date(x.date))}</span> <span>${esc(x.text)}</span></li>`).join("")}</ul>` : "";
+    const site = siteRows.length ? `<h2 class="rep-h2">${esc(t("site"))}</h2><ul class="rep-l rep-site">${siteRows.map((x) => `<li><span class="d">${esc(f.date(x.date))}</span> <span>${esc(x.text)}${photosOf(x)}</span></li>`).join("")}</ul>` : "";
     const note = sum.clientNote ? `<div class="rep-note"><b>${esc(t("note"))}:</b> ${esc(sum.clientNote)}</div>` : "";
     const foot = `<div class="rep-basis">${basisHtml(sum, o.lang)}</div><div class="rep-foot">Arsten / Multiplan · ${esc(f.date(sum.date))}</div>`;
     return head + headline + stages + steel + pours + done + site + note + foot;

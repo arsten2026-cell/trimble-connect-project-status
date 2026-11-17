@@ -59,8 +59,8 @@
     rebarAcc: ["Арм. приета", "Rebar accepted"], pending: ["чака", "pending"],
     byType: ["По тип", "By type"], list: ["Списък", "List"], noType: ["Без тип", "No type"],
     groupPoured: ["излети", "poured"], without: ["без", "n/a"],
-    pubHint: ["Публикува се само: количества по етапи, дати по тактове, „армировка приета“ да/не, общо за стоманата (изработено / доставено / монтирано), дейностите „за клиента“, бележката и „въз основа на“. Без имена, марки, вътрешни бележки и история.",
-      "Published: quantities per stage, dates per pour, \"rebar accepted\" yes/no, steel totals (fabricated / delivered / erected), the activities marked \"for the client\", the note and \"based on\". No names, marks, internal notes or history."],
+    pubHint: ["Публикува се само: количества по етапи, дати по тактове, „армировка приета“ да/не, общо за стоманата (изработено / доставено / монтирано), дейностите „за клиента“ (с до 6 снимки на запис), бележката и „въз основа на“. Без имена, марки, вътрешни бележки и история.",
+      "Published: quantities per stage, dates per pour, \"rebar accepted\" yes/no, steel totals (fabricated / delivered / erected), the activities marked \"for the client\" (with up to 6 photos each), the note and \"based on\". No names, marks, internal notes or history."],
     loose: ["Без номер на такт", "No pour number"], looseHint: ["не се броят като такт", "not counted as a pour"],
     print: ["Печат / PDF", "Print / PDF"], back: ["Назад", "Back"], week: ["Седмица", "Week"], month: ["Месец", "Month"],
     printHint: ["В прозореца за печат изберете „Запази като PDF“ за файл.", "In the print dialog choose \"Save as PDF\" for a file."],
@@ -81,7 +81,9 @@
     // Дейности (shared/arsten-activities.js): the client view and publishing only
     site: ["Дейности на обекта", "Site activities"],
     siteClientHint: ["Записи от последните 30 дни.", "Entries from the last 30 days."],
-    sitePub: ["Дейности за клиента", "Activities for the client"], siteWeek: ["в последните 7 дни", "in the last 7 days"],
+    sitePub: ["Дейности за клиента", "Activities for the client"], sitePhotos: ["снимки", "photos"],
+    sitePhCopy: ["Копиране на снимките за клиента", "Copying the photos for the client"],
+    sitePhFailed: ["снимки не бяха копирани (вижте конзолата) – записите са публикувани без тях", "photos were not copied (see the console) – the entries went out without them"], siteWeek: ["в последните 7 дни", "in the last 7 days"],
     siteReadFail: ["Дейностите не можаха да се прочетат – публикуване без тях?", "The activities could not be read – publish without them?"],
   };
   // plain stage names for the client look (A18)
@@ -429,7 +431,7 @@
     // the period changed, not on every render while the print view is open
     const sum = sumOf(state.sumDay);
     if (repBuilt.sum !== sum || repBuilt.lang !== lang || repBuilt.period !== state.period) {
-      $("repBody").innerHTML = RP.html(sum, { lang, period: state.period });
+      $("repBody").innerHTML = RP.html(sum, { lang, period: state.period, photoUrl: (id) => phUrls.get(id) || "" });
       repBuilt = { sum, lang, period: state.period };
     }
   }
@@ -438,6 +440,20 @@
     if (!inSummary()) return;
     state.report = true;
     render();
+    return printWhenReady();
+  }
+  /** The photos of the report PERIOD: their URLs first (also those already being asked), then the images of the report
+   *  as it is then (it may have been rebuilt meanwhile) loaded, at most 10 s, so they are in the print. */
+  async function printWhenReady() {
+    const sum = sumOf(state.sumDay);
+    if (sum && RP) {
+      const from = RP.periodFrom(sum, state.period === "month" ? "month" : "week");
+      await loadPhotoUrls((sum.site || []).filter((x) => x.date > from && x.date <= sum.date).flatMap((x) => x.photos || []));
+    }
+    render();
+    const imgs = typeof document.querySelectorAll === "function" ? [...document.querySelectorAll("#repBody img")] : [];
+    const loaded = (im) => (im.complete ? null : new Promise((r) => { im.addEventListener("load", r, { once: true }); im.addEventListener("error", r, { once: true }); }));
+    if (imgs.length) await Promise.race([Promise.all(imgs.map(loaded)), new Promise((r) => setTimeout(r, 10000))]);
     // the browser's print dialog ("Save as PDF" for a file); @media print in index.html shows only the report
     if (typeof window.print === "function") setTimeout(() => { try { window.print(); } catch (e) { console.warn("print", e); } }, 150);
   }
@@ -543,8 +559,37 @@
     if (!rows.length) return;
     $("hSite").textContent = t("site");
     $("siteHint").textContent = t("siteClientHint");
-    $("siteList").innerHTML = rows.map((x) => `<li><span class="d">${esc(fmtDate(x.date))}</span><span class="txt">${esc(x.text)}</span></li>`).join("");
+    $("siteList").innerHTML = rows.map((x) => `<li><span class="d">${esc(fmtDate(x.date))}</span><span class="txt">${esc(x.text)}${phThumbs(x)}</span></li>`).join("");
+    loadPhotoUrls(rows.flatMap((x) => x.photos || []));
   }
+  // photos of the published entries (client copies in _AM_Docs/Client/Photos): id -> download URL ("" failed, undefined loading)
+  const phUrls = new Map();
+  const phThumbs = (x) => {
+    const ids = (x.photos || []).filter((id) => phUrls.get(id));
+    return ids.length ? `<span class="ph">${ids.map((id) => `<img src="${esc(phUrls.get(id))}" alt="" loading="lazy" data-ph="${esc(id)}">`).join("")}</span>` : "";
+  };
+  const phPending = new Map();   // id -> promise while its URL is being asked (audit: a print waits for those too)
+  /** Ask Connect for the download URLs of these photos (4 at a time, each once); re-render when they arrive. Resolves
+   *  when every one of them is known, also those an earlier call is still asking for. */
+  async function loadPhotoUrls(ids) {
+    const all = [...new Set(ids)];
+    const want = all.filter((id) => !phUrls.has(id));
+    if (AV && want.length) {
+      for (const id of want) phUrls.set(id, undefined);
+      let i = 0;
+      const next = async () => { while (i < want.length) { const id = want[i++]; try { phUrls.set(id, (await AV.photoUrl(coreFor(), id)) || ""); } catch (e) { console.warn("photo url", e); phUrls.set(id, ""); } } };
+      const batch = Promise.all([next(), next(), next(), next()]).then(() => {
+        for (const id of want) phPending.delete(id);
+        repBuilt = { sum: null, lang: "", period: "" };   // the report is built again with the photos
+        render();
+      });
+      for (const id of want) phPending.set(id, batch);
+    }
+    await Promise.all([...new Set(all.map((id) => phPending.get(id)).filter(Boolean))]);
+  }
+  document.addEventListener && document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("phView").hidden) $("phView").onclick(); });
+  $("siteList").onclick = (e) => { const im = e.target; const id = im && im.dataset && im.dataset.ph; if (id && phUrls.get(id)) { $("phViewImg").src = phUrls.get(id); $("phView").hidden = false; } };
+  $("phView").onclick = () => { $("phView").hidden = true; $("phViewImg").src = ""; };
   function renderPublish() {
     // the box ("Виж като клиент") for admin / GC; the publish form only for admin / PM (L8). Round 16: in "Виж като
     // клиент" the box is hidden too (the client has none); only "Изход от изгледа като клиент" stays.
@@ -653,7 +698,7 @@
     if (!AV && !window.confirm(t("siteReadFail") + "\n(arsten-activities.js)")) { setStatus(t("pubCancelled")); return; }
     if (AV) {
       setStatus(lang === "bg" ? "Четене на дейностите…" : "Reading the activities…");
-      try { const r = await AV.load(coreFor(), state.project.id, fetchFor()); siteOut = AV.forSummary(r.items, day); }
+      try { const r = await AV.load(coreFor(), state.project.id, fetchFor()); siteOut = AV.forSummary(r.items, day, { photos: true }); }
       catch (e) { console.warn("activities not read", e); setStatus(""); if (!window.confirm(t("siteReadFail") + `\n(${errText(e).slice(0, 160)})`)) { setStatus(t("pubCancelled")); return; } }
     }
     const prev = await latestPublished();
@@ -665,8 +710,12 @@
     if (state.asOf && !state.days.includes(state.asOf)) state.asOf = "";
     render();                          // the live view shows the fresh figures behind the confirm dialog
     setStatus(lang === "bg" ? "Подготовка на резюмето…" : "Preparing the summary…");
-    const sum = CS.build({ date: day, now: new Date(), project: state.project, objects: state.objects, pours: state.pours, loose: state.loose, records: state.records,
-      accepted: state.accepted, note: $("inNote").value, basedOn: { stage: $("inStage").value, models: state.models }, steel, site: siteOut });
+    // the photos of the client entries are copied to _AM_Docs/Client/Photos only after the confirm below; the summary
+    // shown in the confirm is built without them, then built again with the copies' ids (same inputs, same time stamp)
+    const nPhotos = siteOut.reduce((n, x) => n + ((x.src || []).length), 0);
+    const buildArgs = { date: day, now: new Date(), project: state.project, objects: state.objects, pours: state.pours, loose: state.loose, records: state.records,
+      accepted: state.accepted, note: $("inNote").value, basedOn: { stage: $("inStage").value, models: state.models }, steel, site: siteOut };
+    let sum = CS.build(buildArgs);
     const v = CS.validate(sum);
     if (!v.ok) throw new Error((lang === "bg" ? "Резюмето не е безопасно за клиента и НЕ е публикувано: " : "The summary is not client-safe and was NOT published: ") + v.errors.slice(0, 3).join("; "));
     const h = CS.headline(sum), again = state.summaries.some((f) => f.day === day);
@@ -680,7 +729,7 @@
     // activities going out: how many, and how many in the report week
     if (sum.site && sum.site.length) {
       const wk = sum.site.filter((x) => x.date > sum.week.from).length;
-      qLines.splice(qLines.length - 1, 0, `${t("sitePub")}: ${sum.site.length} (${t("siteWeek")}: ${wk})`);
+      qLines.splice(qLines.length - 1, 0, `${t("sitePub")}: ${sum.site.length} (${t("siteWeek")}: ${wk})${nPhotos ? ` · ${t("sitePhotos")}: ${nPhotos}` : ""}`);
     }
     // round 19 L8: the note that goes out with it (a note pre-filled from the last summary must not go out unseen)
     const noteOut = String(sum.clientNote || "").trim();
@@ -688,13 +737,23 @@
     qLines.splice(qLines.length - 1, 0, noteOut ? (lang === "bg" ? `Бележка: „${noteShown}“` : `Note: "${noteShown}"`) : (lang === "bg" ? "Без бележка." : "No note."));
     if (!window.confirm(qLines.join("\n"))) { setStatus(""); return; }
     const c = coreFor();
+    let photoNote = "";
+    if (nPhotos && AV) {
+      setStatus(`${t("sitePhCopy")} 0 / ${nPhotos}…`);
+      const cp = await AV.copyForClient({ core: c, projectId: state.project.id, site: siteOut, fetch: fetchFor(),
+        onProgress: (d, n) => setStatus(`${t("sitePhCopy")} ${d} / ${n}…`) });
+      sum = CS.build(Object.assign({}, buildArgs, { site: cp.site }));
+      const v2 = CS.validate(sum);
+      if (!v2.ok) throw new Error((lang === "bg" ? "Резюмето не е безопасно за клиента и НЕ е публикувано: " : "The summary is not client-safe and was NOT published: ") + v2.errors.slice(0, 3).join("; "));
+      if (cp.failed) photoNote = ` · ${cp.failed} ${t("sitePhFailed")}`;
+    }
     state.folderCache = state.folderCache || new Map();
     const folderId = await B.ensureFolder(c, state.project.id, CS.FOLDER, state.folderCache);
     await B.uploadJson(c, folderId, CS.fileName(day), CS.toJson(sum), { fetch: window.ARSTEN_FETCH });
     try { await refreshSummaries(); } catch {}
     if (!sumFile(day)) state.summaries.unshift({ day, id: "", name: CS.fileName(day), modifiedOn: "", stamp: `local|${day}|${sum.published}` });
     state.sums.set(sumFile(day).stamp, sum);   // what was just uploaded is that version
-    setStatus(lang === "bg" ? `Публикувано за клиента: ${CS.FOLDER.join("/")}/${CS.fileName(day)}` : `Published for the client: ${CS.FOLDER.join("/")}/${CS.fileName(day)}`);
+    setStatus((lang === "bg" ? `Публикувано за клиента: ${CS.FOLDER.join("/")}/${CS.fileName(day)}` : `Published for the client: ${CS.FOLDER.join("/")}/${CS.fileName(day)}`) + photoNote, !!photoNote);
     render();
   }
 
@@ -750,8 +809,8 @@
   $("btnSteelCancel").onclick = () => answerSteel(false);
   $("btnPublish").onclick = () => guarded(publish);
   // B-Client 4: "Печат / PDF" opens the print view of the shown summary and the print dialog
-  $("btnPrint").onclick = () => openReport();
-  $("btnDoPrint").onclick = () => { if (typeof window.print === "function") window.print(); };
+  $("btnPrint").onclick = () => guarded(openReport);
+  $("btnDoPrint").onclick = () => guarded(printWhenReady);   // after Седмица -> Месец the month's photos load first
   $("btnBack").onclick = () => { state.report = false; render(); };
   $("btnWeek").onclick = () => { state.period = "week"; render(); };
   $("btnMonth").onclick = () => { state.period = "month"; render(); };

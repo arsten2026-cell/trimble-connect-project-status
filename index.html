@@ -93,6 +93,10 @@
   .rep-t td.c.done { font-weight:600; } .rep-t td.c.none { color:#b8b4ab; }
   .rep-l { list-style:none; margin:0; padding:0; font-size:11.5px; } .rep-l li { padding:2px 0; border-bottom:1px solid var(--line); }
   .rep-site li { display:flex; gap:6px; } .rep-site .d { flex:none; }
+  .rep-ph { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; } .rep-ph img { width:120px; height:90px; object-fit:cover; border:1px solid var(--line); }
+  .site .ph { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; } .site .ph img { width:64px; height:64px; object-fit:cover; border:1px solid var(--line); cursor:zoom-in; }
+  #phView { position:fixed; inset:0; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; z-index:10; }
+  #phView img { max-width:96vw; max-height:90vh; }
   .rep-l .d { display:inline-block; min-width:80px; color:var(--muted); font-variant-numeric:tabular-nums; }
   .rep-note { margin-top:10px; padding:6px 8px; border-left:3px solid var(--accent); background:#fbf3ec; font-size:12px; white-space:pre-wrap; }
   .rep-basis { margin-top:12px; font-size:11px; color:var(--muted); } .rep-basis b { color:var(--ink); }
@@ -141,6 +145,7 @@
       <div class="sub" id="siteHint"></div>
       <ul class="tl site" id="siteList"></ul>
     </div>
+    <div id="phView" hidden><img id="phViewImg" alt=""></div>
 
     <div class="box" id="sumBox" hidden style="margin-top:8px">
       <div class="bar" style="margin:0">
@@ -205,9 +210,9 @@
 <script src="records.js?v=f037461491"></script>
 <script src="fabrication.js?v=7108b8ac3e"></script>
 <script src="steel-summary.js?v=05bef6fa3f"></script>
-<script src="client-summary.js?v=a5e83177a2"></script>
-<script src="report.js?v=5c6050540f"></script>
-<script src="arsten-activities.js?v=a3cf06e68b"></script>
-<script src="app.js?v=97f583fa05"></script>
+<script src="client-summary.js?v=acf24c8101"></script>
+<script src="report.js?v=01e85352b6"></script>
+<script src="arsten-activities.js?v=1a4b53ca35"></script>
+<script src="app.js?v=4e8212e6a1"></script>
 </body>
 </html>

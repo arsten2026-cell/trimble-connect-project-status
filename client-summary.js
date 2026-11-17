@@ -29,7 +29,7 @@
   // 4 (17.11.2026): optional "site" - the activities shown to the client ({text, date}, shared/arsten-activities.js forSummary). A
   // summary without site works is still written as version 3, so a panel that knows only 1-3 still reads it.
   const TYPE = "arsten-client-summary", VERSION = 4;
-  const SITE_TEXT_MAX = 200, SITE_MAX = 300;
+  const SITE_TEXT_MAX = 200, SITE_MAX = 300, SITE_PHOTOS = 6, PHOTO_ID = /^[A-Za-z0-9_-]{1,80}$/;
   // The project's tool folder is _AM_Docs (renamed from _ArstenDocs on 17.11.2026, one name for Arsten and Multiplan).
   // Lookups take _AM_Docs first and fall back to an old _ArstenDocs; only _AM_Docs is ever created.
   const DOCS = "_AM_Docs", DOCS_OLD = "_ArstenDocs";
@@ -164,7 +164,13 @@
     if (steel) sum.steel = steel;
     // site works (version 4): text and day only, done on or before the summary day; none = version 3 as before
     const site = (Array.isArray(o.site) ? o.site : []).filter((x) => x && DAY_RE.test(String(x.date)) && x.date <= date && str(x.text, SITE_TEXT_MAX))
-      .slice(0, SITE_MAX).map((x) => ({ text: str(x.text, SITE_TEXT_MAX), date: x.date }));
+      .slice(0, SITE_MAX).map((x) => {
+        const e = { text: str(x.text, SITE_TEXT_MAX), date: x.date };
+        // photos: ids of the CLIENT copies in _AM_Docs/Client/Photos (shared/arsten-activities.js copyForClient)
+        const ph = (Array.isArray(x.photos) ? x.photos : []).filter((id) => typeof id === "string" && PHOTO_ID.test(id)).slice(0, SITE_PHOTOS);
+        if (ph.length) e.photos = ph;
+        return e;
+      });
     if (site.length) { sum.site = site; sum.version = 4; }
     else sum.version = 3;
     return sum;
@@ -214,7 +220,8 @@
       count: obj({ total: T.i, fabricated: T.i, delivered: T.i, erected: T.i }),
       kg: obj({ total: T.nn, fabricated: T.nn, delivered: T.nn, erected: T.nn }) }), { optional: true }),
     // version 4: site works the staff marked for the client - what was done and the day, nothing else
-    site: { t: "array", max: SITE_MAX, optional: true, of: obj({ text: T.s(SITE_TEXT_MAX), date: T.day }) },
+    site: { t: "array", max: SITE_MAX, optional: true, of: obj({ text: T.s(SITE_TEXT_MAX), date: T.day,
+      photos: { t: "array", max: SITE_PHOTOS, optional: true, of: T.s(80, PHOTO_ID) } }) },
   });
   const V3_KEYS = [["steel"], ["basedOn", "unnumbered"]];   // not allowed in a version 1 / 2 file
   // keys that must never appear anywhere (defence in depth: the whitelist already refuses them; this names them)

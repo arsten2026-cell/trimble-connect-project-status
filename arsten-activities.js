@@ -7,12 +7,15 @@
 //   date    the day it was done, "YYYY-MM-DD"; "" = not done yet (planned; staff see it, the client never does)
 //   client  true = goes to the client summary and the weekly / monthly report once it has a date (Статус publishes)
 //   created ISO time it was added (only for ordering)
-//   photos  [{id, name}]: Connect file ids of the photos (at most PHOTOS_MAX); staff only, never in the client summary
+//   photos  [{id, name}]: Connect file ids of the photos (at most PHOTOS_MAX); the first CLIENT_PHOTOS of a client entry are copied for the client at publishing
 // No names are kept (Connect's file versions already say who uploaded each version).
 // Every save reads the file again first and applies just that one change to the fresh list, uploads it, then reads it once
 // more and checks the change is there (another person's upload at the same moment can replace it): if not, the change is
 // applied again to that newer list (at most SAVE_TRIES times). A file that cannot be read as a list is never overwritten.
-// The client summary carries only the client entries with a date: {text, date} (forSummary; Статус, client-summary.js).
+// The client summary carries only the client entries with a date: {text, date, photos?} (forSummary; Статус,
+// client-summary.js). Photos for the client (user, 17.11.2026): at publishing, the photos of those entries (at most
+// CLIENT_PHOTOS each) are COPIED to _AM_Docs/Client/Photos/<YYYY-MM>/act-<source file id>.jpg (copyForClient), so the
+// client only ever reads _AM_Docs/Client; a photo copied before is found by its name and not copied again.
 // Pure except load / change / uploadPhoto, which take a Core client {req} (shared/arsten-backup.js) and the browser fetch.
 // Browser: window.ArstenActivities; node: require.
 (function (root, factory) {
@@ -30,7 +33,8 @@
   const SAVE_TRIES = 3, LIST_SUSPECT = 100;
   const TEXT_MAX = 200, ITEMS_MAX = 2000, PHOTOS_MAX = 12;
   // the summary keeps the client entries of the last SUMMARY_DAYS days (the monthly report looks 30 days back)
-  const SUMMARY_DAYS = 62, SUMMARY_MAX = 300;
+  const SUMMARY_DAYS = 62, SUMMARY_MAX = 300, CLIENT_PHOTOS = 6;
+  const CLIENT_FOLDER = [DOCS, "Client", "Photos"];
   const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
   const pickFolder = (list, name) => {
     const isF = (x) => !!x && String(x.type || "").toUpperCase() === "FOLDER";
@@ -149,12 +153,17 @@
   }
 
   /** For the client summary of `date`: the client entries done on or before that day, in the SUMMARY_DAYS before it,
-   *  as [{text, date}] (newest first, at most SUMMARY_MAX). Nothing else of an entry goes out (no photos, no ids). */
-  function forSummary(items, date) {
+   *  as [{text, date}] (newest first, at most SUMMARY_MAX). Nothing else of an entry goes out. With opts.photos the
+   *  entries keep `src`: their first CLIENT_PHOTOS photos [{id, name}] (SOURCE files: copyForClient replaces them). */
+  function forSummary(items, date, opts) {
     if (!realDay(date)) return [];
     const from = addDays(date, -SUMMARY_DAYS);
     return sorted((items || []).filter((x) => x && x.client && realDay(x.date) && x.date > from && x.date <= date))
-      .slice(0, SUMMARY_MAX).map((x) => ({ text: cleanText(x.text), date: x.date }));
+      .slice(0, SUMMARY_MAX).map((x) => {
+        const out = { text: cleanText(x.text), date: x.date };
+        if (opts && opts.photos && x.photos && x.photos.length) out.src = cleanPhotos(x.photos).slice(0, CLIENT_PHOTOS);
+        return out;
+      });
   }
   /** Entries grouped by week (Monday first): [{week: "YYYY-MM-DD" (Monday), items}], newest week first; planned
    *  entries (no date) in a first group with week "". */
@@ -275,12 +284,67 @@
     if (!id) throw new Error("upload: file id not returned");
     return { id, name };
   }
+  /** Name of the client copy of a source photo (the same source = the same name, so it is found and not copied again). */
+  const clientName = (srcId) => `act-${String(srcId).replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 80)}.jpg`;
+  /**
+   * Copy the photos of the summary entries (forSummary(..., {photos: true}): `src`) to _AM_Docs/Client/Photos/<YYYY-MM>/
+   * and return the entries with `photos: [client file id]` instead of `src`. A photo already copied (same name in that
+   * folder) is reused. A photo that cannot be copied is left out (counted in `failed`); the entry still goes out.
+   * o: {core, projectId, site, fetch, onProgress(done, total)} -> {site, copied, reused, failed}
+   */
+  async function copyForClient(o) {
+    const f = o.fetch || ((...a) => fetch(...a));
+    const cache = new Map(), listings = new Map();
+    const total = (o.site || []).reduce((n, x) => n + ((x && x.src) || []).length, 0);
+    let copied = 0, reused = 0, failed = 0, done = 0;
+    const out = [];
+    for (const x of o.site || []) {
+      const e = { text: x.text, date: x.date };
+      const ids = [];
+      for (const p of (x && x.src) || []) {
+        try {
+          const month = x.date.slice(0, 7);
+          const folderId = await B.ensureFolder(o.core, o.projectId, CLIENT_FOLDER.concat([month]), cache);
+          if (!listings.has(folderId)) listings.set(folderId, itemsOf(await o.core.req(`folders/${encodeURIComponent(folderId)}/items`)));
+          const name = clientName(p.id);
+          const have = listings.get(folderId).find((y) => y && y.name === name);
+          if (have && have.id) { ids.push(have.id); reused++; }
+          else {
+            const url = await photoUrl(o.core, p.id);
+            if (!url) throw new Error("no download URL");
+            const res = await f(url);
+            if (!res || !res.ok) throw new Error("photo download " + (res ? res.status : "?"));
+            const blob = typeof res.blob === "function" ? await res.blob() : await res.text();
+            const init = await o.core.req("files/fs/initiate", "POST", { parentId: folderId, parentType: "FOLDER", name });
+            if (!init || !init.uploadURL) throw new Error("upload: no upload URL");
+            const put = await f(init.uploadURL, { method: "PUT", body: blob, headers: { "Content-Type": "image/jpeg" } });
+            if (!put || !put.ok) throw new Error(`upload PUT ${put ? put.status : "?"}`);
+            const c = await o.core.req("files/fs/commit", "POST", { uploadId: init.uploadId });
+            let id = c && (c.id || c.fileId || (c.file && c.file.id) || (c.data && c.data.id));
+            for (let i = 0; !id && i < 10; i++) {
+              await new Promise((r) => setTimeout(r, o.lookMs == null ? 800 : o.lookMs));
+              const y = itemsOf(await o.core.req(`folders/${encodeURIComponent(folderId)}/items`)).find((z) => z.name === name);
+              if (y) id = y.id;
+            }
+            if (!id) throw new Error("upload: file id not returned");
+            listings.get(folderId).push({ id, name, type: "FILE" });
+            ids.push(id); copied++;
+          }
+        } catch (err) { console.warn("client photo not copied", p && p.id, err); failed++; }
+        done++;
+        if (o.onProgress) o.onProgress(done, total);
+      }
+      if (ids.length) e.photos = ids;
+      out.push(e);
+    }
+    return { site: out, copied, reused, failed };
+  }
   /** Download URL of a photo (for the thumbnail / full view); "" when Connect gives none. */
   async function photoUrl(core, fileId) {
     const d = await core.req(`files/fs/${encodeURIComponent(fileId)}/downloadurl`);
     return (d && (d.url || d.downloadUrl || d.href)) || "";
   }
 
-  return { TYPE, VERSION, FOLDER, FILE, PHOTOS, TEXT_MAX, ITEMS_MAX, PHOTOS_MAX, SUMMARY_DAYS, SUMMARY_MAX, parse, toJson, sorted, apply,
+  return { CLIENT_PHOTOS, CLIENT_FOLDER, clientName, copyForClient, TYPE, VERSION, FOLDER, FILE, PHOTOS, TEXT_MAX, ITEMS_MAX, PHOTOS_MAX, SUMMARY_DAYS, SUMMARY_MAX, parse, toJson, sorted, apply,
     forSummary, byWeek, weekOf, addDays, load, change, uploadPhoto, photoUrl, photoName, realDay };
 });
