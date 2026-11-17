@@ -68,16 +68,55 @@
   .fld { display:block; font-size:12px; color:var(--muted); margin:8px 0 3px; }
   input[type=text], textarea { font:inherit; width:100%; padding:6px; border:1px solid var(--line); background:#fff; border-radius:0; }
   textarea { resize:vertical; min-height:56px; }
+  .ask { margin:8px 0; padding:8px 10px; border-left:3px solid var(--bad); background:#fbeeed; font-size:12.5px; }
+  /* week 4: steel card (B-Client 2), print view (B-Client 4) */
+  #steelCard { margin-top:8px; }
+  #steelCard .big { font-size:20px; font-weight:600; color:var(--accent); vertical-align:-2px; }
+  #steelCard .num { color:var(--muted); font-variant-numeric:tabular-nums; }
+  #app.reporting #main, #app.reporting #status { display:none; }
+  #report { background:#fff; border:1px solid var(--line); padding:14px; }
+  #report .seg { margin-left:0; }
+  .rep-top { display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--muted); border-bottom:2px solid var(--accent); padding-bottom:4px; }
+  .rep-brand b { color:var(--accent); }
+  .rep-h1 { font-size:18px; margin:10px 0 2px; }
+  .rep-sub { font-size:12px; color:var(--muted); }
+  .rep-card { border:1px solid var(--line); padding:8px 10px; margin-top:8px; font-size:13px; }
+  .rep-card .big { font-size:20px; font-weight:600; color:var(--accent); }
+  .rep-card .num { color:var(--muted); }
+  .rep-h2 { font-size:12px; margin:14px 0 4px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .rep-t th, .rep-t td { padding:3px 4px; font-size:11px; }
+  /* round 19 L1: a wide table scrolls inside its box, not the page (375 px phones) */
+  .rep-scroll { overflow-x:auto; max-width:100%; }
+  @media (max-width:420px) { .rep-t th { white-space:normal; } #report { padding:10px 8px; } }
+  .rep-t td.c.done { font-weight:600; } .rep-t td.c.none { color:#b8b4ab; }
+  .rep-l { list-style:none; margin:0; padding:0; font-size:11.5px; } .rep-l li { padding:2px 0; border-bottom:1px solid var(--line); }
+  .rep-l .d { display:inline-block; min-width:80px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .rep-note { margin-top:10px; padding:6px 8px; border-left:3px solid var(--accent); background:#fbf3ec; font-size:12px; white-space:pre-wrap; }
+  .rep-basis { margin-top:12px; font-size:11px; color:var(--muted); } .rep-basis b { color:var(--ink); }
+  .rep-foot { margin-top:14px; padding-top:4px; border-top:1px solid var(--line); font-size:10.5px; color:var(--muted); text-align:right; }
+  @media print {
+    @page { size:A4; margin:14mm 12mm; }
+    body { background:#fff; padding:0; font-size:11px; }
+    #app > :not(#report), .noprint, [data-arsten-diag] { display:none !important; }
+    #report { border:0; padding:0; }
+    .rep-scroll { overflow:visible; }
+    tr, .rep-card, .rep-note { break-inside:avoid; }
+    thead { display:table-header-group; }
+    tr.grp td { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
 </style>
 </head>
 <body>
 <div id="app">
   <div class="top"><h1 id="title">Статус</h1>
     <select id="selLang" title="Language / Език"><option value="bg">BG</option><option value="en">EN</option></select></div>
-  <div id="status" class="status">Connecting to Trimble Connect…</div>
+  <button type="button" class="small secondary" data-arsten-diag style="float:right;margin-left:6px">Копирай диагностика</button>
+  <div id="status" class="status">Trimble Connect…</div>
 
   <div id="main" hidden>
+    <div class="bar" id="leaveBar" hidden style="margin-top:0"><button id="btnLeaveClient"></button></div>
     <div class="box" id="headline"></div>
+    <div class="box" id="steelCard" hidden></div>
 
     <h2 id="hPub" hidden></h2>
     <div class="box" id="pubBox" hidden>
@@ -87,12 +126,17 @@
         <label class="fld" for="inStage" id="lblStage"></label><input type="text" id="inStage" maxlength="200">
         <label class="fld" for="inNote" id="lblNote"></label><textarea id="inNote" rows="3" maxlength="2000"></textarea>
         <div class="bar"><button id="btnPublish"></button><span class="sub" id="pubInfo"></span></div>
+        <div class="ask" id="steelAsk" hidden role="alert"><div id="steelAskText"></div>
+          <div class="bar" style="margin-bottom:0"><button id="btnSteelGo"></button><button id="btnSteelCancel" class="secondary"></button></div></div>
         <div class="sub" id="pubHint"></div>
       </div>
     </div>
 
     <div class="box" id="sumBox" hidden style="margin-top:8px">
-      <label class="chk"><span id="lblSum"></span> <select id="selSum"></select></label>
+      <div class="bar" style="margin:0">
+        <label class="chk"><span id="lblSum"></span> <select id="selSum"></select></label>
+        <button id="btnPrint" class="small secondary" style="margin-left:auto" hidden></button>
+      </div>
     </div>
 
     <div class="box" style="margin-top:8px">
@@ -117,25 +161,42 @@
     <div class="h2bar"><h2 id="hPours"></h2>
       <span class="seg"><button id="btnByType" class="small"></button><button id="btnList" class="small"></button></span></div>
     <table><thead id="pourHead"></thead><tbody id="pourRows"></tbody></table>
+    <div class="note" id="looseNote" hidden></div>
 
     <h2 id="hTimeline"></h2>
     <ul class="tl" id="timeline"></ul>
     <div class="bar"><button id="btnMore" class="small secondary" hidden></button></div>
+  </div>
+
+  <!-- B-Client 4: print view of the shown published summary (report.js); @media print shows only this -->
+  <div id="report" hidden>
+    <div class="bar noprint" style="margin-top:0">
+      <button id="btnDoPrint"></button><button id="btnBack" class="secondary"></button>
+      <span class="seg"><button id="btnWeek" class="small"></button><button id="btnMonth" class="small"></button></span>
+    </div>
+    <div class="sub noprint" id="printHint"></div>
+    <div id="repBody"></div>
   </div>
 </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/trimble-connect-workspace-api@0.3.38/dist/iife/trimbleconnect.workspace.api.js" integrity="sha384-lFiNt/56q6HnUNbuy0WHO3NP6BkQjY4EH8+5eELYVfnhkB42snRTmSa3UOAlX9gg" crossorigin="anonymous"></script>
 <script src="arsten-perf.js?v=21f7454938"></script>
-<script src="arsten-access.js?v=b6f528e602"></script>
+<script src="arsten-diag.js?v=bb0c6351fe"></script>
+<script src="arsten-i18n.js?v=de006467e2"></script>
+<script src="arsten-access.js?v=804b676e26"></script>
 <script src="common.js?v=a04c428e31"></script>
 <script src="status.js?v=900f56b5c0"></script>
-<script src="psetapi.js?v=3ecda69f18"></script>
+<script src="psetapi.js?v=f5bc3d57fb"></script>
 <script src="arsten-links.js?v=7bf607a606"></script>
 <script src="arsten-acceptance.js?v=3fb82d4a41"></script>
 <script src="arsten-backup.js?v=6474f7830d"></script>
 <script src="progress.js?v=7669b8fbe4"></script>
-<script src="client-summary.js?v=12285cbf86"></script>
-<script src="app.js?v=9fefe9249f"></script>
+<script src="records.js?v=f037461491"></script>
+<script src="fabrication.js?v=7108b8ac3e"></script>
+<script src="steel-summary.js?v=05bef6fa3f"></script>
+<script src="client-summary.js?v=1a61ad2fd9"></script>
+<script src="report.js?v=07a4f00296"></script>
+<script src="app.js?v=531eed4458"></script>
 </body>
 </html>

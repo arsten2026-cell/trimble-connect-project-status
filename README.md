@@ -1,7 +1,7 @@
 # Project status: read-only client view (Trimble Connect 3D viewer)
 
 For the client (and admins / general contractor): construction progress of the Tekla pours, read from the statuses
-that **Pour status (Arsten)** stores in the project library "CIP/Монолитно". Writes nothing to the data.
+that **Pour status (Arsten / Multiplan)** (Монолитен бетон) stores in the project library "CIP/Монолитно". Writes nothing to the data.
 
 | File | What |
 |---|---|

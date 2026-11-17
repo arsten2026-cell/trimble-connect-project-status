@@ -5,7 +5,8 @@
 // What a summary holds: totals per stage in the stage's own unit (m², kg, m³), per pour: label, type, object count, per
 // stage the date it was completed (or null), how many objects are done and how many of those are "without" (na: the step
 // does not apply, e.g. "Без кофраж"; version 2, round 10 H1), "rebar accepted" yes / pending / none; counts;
-// the PM's free-text note for the client; "based on" (stage name, model names + versions, the date).
+// the PM's free-text note for the client; "based on" (stage name, model names + versions, the date, how many objects have
+// no pour number and are left out); version 3: steel totals (counts and kg fabricated / delivered / erected, steel-summary.js).
 // What it NEVER holds: names (who marked / decided / requested), internal notes, history logs, rejection texts, ToDo ids.
 // build() takes only the fields listed above; validate() rejects any key outside the whitelist (and names the forbidden
 // ones), so a summary that would leak cannot be published or shown.
@@ -16,13 +17,16 @@
   const req2 = (a, b) => { try { return require(a); } catch { return require(b); } };
   const lib = factory(node ? require("./progress.js") : root.ProjectProgress, node ? require("./status.js") : root.PourStatus,
     node ? req2("../shared/arsten-acceptance.js", "./arsten-acceptance.js") : root.ArstenAcceptance,
-    node ? req2("../shared/arsten-access.js", "./arsten-access.js") : root.ArstenAccess);
+    node ? req2("../shared/arsten-access.js", "./arsten-access.js") : root.ArstenAccess,
+    node ? require("./steel-summary.js") : root.SteelProgress);
   if (node) module.exports = lib;
   else root.ClientSummary = lib;
-})(typeof self !== "undefined" ? self : this, function (P, S, ACC, AX) {
+})(typeof self !== "undefined" ? self : this, function (P, S, ACC, AX, SP) {
   "use strict";
 
-  const TYPE = "arsten-client-summary", VERSION = 2;   // 2: per pour step "na" (round 10 H1); version 1 files are still read
+  // 2: per pour step "na" (round 10 H1). 3 (week 4): optional "steel" totals (B-Client 2) and basedOn.unnumbered (round 14:
+  // objects with no pour number are no takt). Version 1 and 2 files are still read; they may not carry the version 3 keys.
+  const TYPE = "arsten-client-summary", VERSION = 3;
   const FOLDER = ["_ArstenDocs", "Client"];
   const NOTE_MAX = 2000;
   const STEP_IDS = S.STEPS.map((s) => s.id);
@@ -93,48 +97,61 @@
    * The client summary for one day. Only whitelisted fields are copied, whatever the inputs carry.
    * @param o {date: "YYYY-MM-DD", now?: Date, project?: {id, name}, objects: [{guid, pour, volume, formwork, rebar}],
    *           pours: [{label, types, objects: [{guid}]}], records: Map guid -> status record (any; reduced to steps/dates here),
-   *           accepted?: merged acceptance records or null, note?: string, basedOn?: {stage, models: [{name, version, date}]}}
+   *           accepted?: merged acceptance records or null, note?: string, basedOn?: {stage, models: [{name, version, date}]},
+   *           loose?: groups with no pour number (common.js groupPours "unnumbered"),
+   *           steel?: steel-summary.js build() result, or null (no steel library / not readable: no steel section)}
+   * Round 14: a group with numbered === false (or in `loose`) is no takt. It is left out of the pours, the counts and
+   * the totals; its object count goes to basedOn.unnumbered, which "based on" shows.
    */
   function build(o) {
     const date = o.date;
     if (!DAY_RE.test(String(date || ""))) throw new Error("summary: date YYYY-MM-DD required");
     const now = o.now instanceof Date ? o.now : new Date(o.now == null ? Date.now() : o.now);
+    const loose = (o.pours || []).filter((g) => g && g.numbered === false).concat(o.loose || []);
+    const looseGuids = new Set(loose.flatMap((g) => ((g && g.objects) || []).map((x) => x && x.guid)).filter(Boolean));
+    const takts = (o.pours || []).filter((g) => g && g.numbered !== false);
+    const objects = (o.objects || []).filter((x) => x && !looseGuids.has(x.guid));
     const recs = P.recordsAsOf(o.records || new Map(), date);
     const from = addDays(date, -7);
     const prev = P.recordsAsOf(o.records || new Map(), from);
-    const ov = P.overall(o.objects || [], recs), ovPrev = P.overall(o.objects || [], prev);
+    const ov = P.overall(objects, recs), ovPrev = P.overall(objects, prev);
     const totals = {};
     for (const id of STEP_IDS) {
       const s = ov.steps[id];
       totals[id] = { qty: round(s.qty, 2), total: round(s.total, 2), unit: str(s.unit, 8), pct: round(s.pct, 4),
         pours: ov.poursComplete[id] || 0, weekQty: round(s.qty - ovPrev.steps[id].qty, 2) };
     }
-    const rows = P.perPour(o.pours || [], recs);
+    const rows = P.perPour(takts, recs);
     const accIndex = rebarIndex(o.accepted);
     const pours = rows.map((r, i) => {
       const steps = {};
       for (const id of STEP_IDS) { const c = r.steps[id]; steps[id] = { date: c.complete && c.date ? c.date : null, done: c.done, na: c.na || 0 }; }
-      return { label: str(r.label, 100), type: str(pourType(o.pours[i]), 200), objects: r.total, steps, rebar: rebarState(o.accepted, r.label, accIndex) };
+      return { label: str(r.label, 100), type: str(pourType(takts[i]), 200), objects: r.total, steps, rebar: rebarState(o.accepted, r.label, accIndex) };
     });
     const complete = (p, id) => p.objects > 0 && p.steps[id].done === p.objects;
     const pouredPours = pours.filter((p) => complete(p, "poured"));
     const counts = {
-      pours: pours.length, objects: (o.objects || []).length,
+      pours: pours.length, objects: objects.length,
       rebarAccepted: pours.filter((p) => p.rebar === "yes").length,
       rebarPending: pours.filter((p) => p.rebar === "pending").length,
       poured: pouredPours.length,
       pouredWithAcceptedRebar: pouredPours.filter((p) => p.rebar === "yes").length,
     };
     const b = o.basedOn || {};
-    return {
+    const basedOn = { stage: str(b.stage, 200), date,
+      models: (b.models || []).slice(0, 50).map((m) => ({ name: str(m && m.name, 200), version: str(m && m.version, 100), date: DAY_RE.test(String(m && m.date)) ? m.date : "" })) };
+    if (looseGuids.size) basedOn.unnumbered = looseGuids.size;
+    const sum = {
       type: TYPE, version: VERSION, date, published: now.toISOString(),
       project: { id: str(o.project && o.project.id, 100), name: str(o.project && o.project.name, 200) },
       clientNote: str(o.note, NOTE_MAX),
-      basedOn: { stage: str(b.stage, 200), date,
-        models: (b.models || []).slice(0, 50).map((m) => ({ name: str(m && m.name, 200), version: str(m && m.version, 100), date: DAY_RE.test(String(m && m.date)) ? m.date : "" })) },
+      basedOn,
       acceptance: !!o.accepted,
       counts, totals, week: { from }, pours,
     };
+    const steel = SP && o.steel ? SP.clean(o.steel) : null;   // totals only, whatever o.steel carries
+    if (steel) sum.steel = steel;
+    return sum;
   }
 
   /** Round 12 M5: build() for the live view, remembered for the last inputs. A re-render with the same day, records,
@@ -145,7 +162,7 @@
     let lastKey = null, last = null;
     const keyOf = (o) => {
       const b = o.basedOn || {};
-      return [o.date, o.objects, o.pours, o.records, o.accepted, o.project, o.note || "", b.stage || "", b.models];
+      return [o.date, o.objects, o.pours, o.loose, o.records, o.accepted, o.project, o.note || "", b.stage || "", b.models, o.steel];
     };
     const same = (a, b) => !!a && a.length === b.length && a.every((x, i) => x === b[i]);
     return function liveBuild(o) {
@@ -159,7 +176,7 @@
 
   // ---------- validation: a strict whitelist ----------
   const T = {
-    s: (max, re) => ({ t: "string", max, re }), n: { t: "number" }, i: { t: "int" }, b: { t: "boolean" }, iOpt: { t: "int", optional: true },
+    s: (max, re) => ({ t: "string", max, re }), n: { t: "number" }, nn: { t: "number", min: 0 }, i: { t: "int" }, b: { t: "boolean" }, iOpt: { t: "int", optional: true },
     day: { t: "string", max: 10, re: DAY_RE }, dayOrEmpty: { t: "string", max: 10, re: /^(\d{4}-\d{2}-\d{2})?$/ },
   };
   const obj = (keys) => ({ t: "object", keys });
@@ -168,14 +185,20 @@
     type: { t: "const", v: TYPE }, version: T.i, date: T.day, published: T.s(40),
     project: obj({ id: T.s(100), name: T.s(200) }),
     clientNote: T.s(NOTE_MAX),
-    basedOn: obj({ stage: T.s(200), date: T.day, models: { t: "array", max: 50, of: obj({ name: T.s(200), version: T.s(100), date: T.dayOrEmpty }) } }),
+    basedOn: obj({ stage: T.s(200), date: T.day, models: { t: "array", max: 50, of: obj({ name: T.s(200), version: T.s(100), date: T.dayOrEmpty }) },
+      unnumbered: T.iOpt }),
     acceptance: T.b,
     counts: obj({ pours: T.i, objects: T.i, rebarAccepted: T.i, rebarPending: T.i, poured: T.i, pouredWithAcceptedRebar: T.i }),
     totals: steps(obj({ qty: T.n, total: T.n, unit: T.s(8), pct: T.n, pours: T.i, weekQty: T.n })),
     week: obj({ from: T.day }),
     pours: { t: "array", max: 5000, of: obj({ label: T.s(100), type: T.s(200), objects: T.i,
       rebar: { t: "enum", v: ["yes", "pending", "none", null] }, steps: steps(obj({ date: { t: "string", max: 10, re: DAY_RE, nullable: true }, done: T.i, na: T.iOpt })) }) },
+    // version 3 (B-Client 2): steel TOTALS only - no marks, GUIDs, names, notes or dates
+    steel: Object.assign(obj({ model: T.b, byWeight: T.b,
+      count: obj({ total: T.i, fabricated: T.i, delivered: T.i, erected: T.i }),
+      kg: obj({ total: T.nn, fabricated: T.nn, delivered: T.nn, erected: T.nn }) }), { optional: true }),
   });
+  const V3_KEYS = [["steel"], ["basedOn", "unnumbered"]];   // not allowed in a version 1 / 2 file
   // keys that must never appear anywhere (defence in depth: the whitelist already refuses them; this names them)
   const FORBIDDEN = /(^|_)(by|note|notes|log|history|comment|comments|email|user|users|decided|requested|reason|todo|todo_id|declog|wrong|hold)$/i;
   const ALLOWED_NOTE_PATH = "clientNote";
@@ -190,7 +213,7 @@
         case "const": if (v !== sc.v) errors.push(`${path}: must be ${sc.v}`); return;
         case "enum": if (!sc.v.includes(v)) errors.push(`${path}: not allowed value`); return;
         case "boolean": if (typeof v !== "boolean") errors.push(`${path}: boolean expected`); return;
-        case "number": if (typeof v !== "number" || !isFinite(v)) errors.push(`${path}: number expected`); return;
+        case "number": if (typeof v !== "number" || !isFinite(v)) errors.push(`${path}: number expected`); else if (sc.min != null && v < sc.min) errors.push(`${path}: too small`); return;
         case "int": if (!Number.isInteger(v) || v < 0) errors.push(`${path}: whole number expected`); return;
         case "string":
           if (typeof v !== "string") { errors.push(`${path}: text expected`); return; }
@@ -220,6 +243,25 @@
       }
     };
     walk(sum, SCHEMA, "");
+    if (sum && typeof sum === "object" && !Array.isArray(sum)) {
+      // known versions only (a newer file is refused rather than half shown); the version 3 keys only from version 3 on
+      const ver = sum.version;
+      if (Number.isInteger(ver) && (ver < 1 || ver > VERSION)) errors.push(`version: ${ver} not supported (1-${VERSION})`);
+      if (Number.isInteger(ver) && ver < 3) {
+        for (const p of V3_KEYS) {
+          const parent = p.length > 1 ? sum[p[0]] : sum;
+          if (parent && typeof parent === "object" && Object.prototype.hasOwnProperty.call(parent, p[p.length - 1])) errors.push(`${p.join(".")}: not allowed before version 3`);
+        }
+      }
+      // the steel figures must add up: a part never above the total - with a steel model, and without one whenever the
+      // total (the pieces known from the records) is given (round 15 L6). An older no-model file has total 0 (unknown):
+      // it still reads, and the card leaves its delivered figure out (report.js steelCard).
+      const st = sum.steel;
+      if (st && st.count && st.kg && (st.model === true || st.count.total > 0)) for (const k of ["fabricated", "delivered", "erected"]) {
+        if (st.count[k] > st.count.total) errors.push(`steel.count.${k}: above the total`);
+        if (st.model === true && st.byWeight && st.kg[k] > st.kg.total + 0.5) errors.push(`steel.kg.${k}: above the total`);
+      }
+    }
     return { ok: !errors.length, errors };
   }
   const toJson = (sum) => JSON.stringify(sum, null, 1);
@@ -233,10 +275,11 @@
 
   // ---------- reading the summaries in the view ----------
   // Who may publish (round 11 M2): a summary file counts only when the uploader of its current version (modifiedBy, else
-  // createdBy) is a member of 00_ADMIN, 02.GENERAL CONTRACTOR or 02.1-EXECUTION PROJECT MANAGER, or a Connect project
-  // ADMIN (who can change folder rights anyway). Anyone else's file is dropped before the one-per-day choice, so a forged
+  // createdBy) is a member of 00_ADMIN or 02.1-EXECUTION PROJECT MANAGER, or a Connect project ADMIN (who can change
+  // folder rights anyway). Round 16 M2: the same people as the publish button (admin or the PM); a 02.GENERAL CONTRACTOR
+  // member's upload is no longer trusted. Anyone else's file is dropped before the one-per-day choice, so a forged
   // newer file cannot hide the real one. If the members cannot be read, nothing is dropped and the files are "unverified".
-  const TRUSTED_GROUPS = ["ADMIN", "GENERAL CONTRACTOR", "EXECUTION PROJECT MANAGER"];   // group keys (number prefix removed)
+  const TRUSTED_GROUPS = ["ADMIN", "EXECUTION PROJECT MANAGER"];   // group keys (number prefix removed)
   const norm = (s) => String(s == null ? "" : s).trim().toLowerCase();
   const groupKey = (n) => (AX && AX.groupKey ? AX.groupKey(n) : norm(n).replace(/^\d+(?:[.,]\d+)*\s*[.)\-_:]?\s*/, "").trim());
   const sameUser = (a, b) => !!a && !!b && ((a.id && b.id && a.id === b.id) || (a.email && b.email && norm(a.email) === norm(b.email))
