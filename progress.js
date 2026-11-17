@@ -44,6 +44,27 @@
     return out;
   }
 
+  /**
+   * Whether step i of a record counts as done (H1, round 10). Same rule as S.stageIndex: a step marked "without" (does not
+   * apply) counts as covered only once the step before it is covered, so formwork "without" = ready for rebar, but the
+   * automatic stripped "without" (set with "Без кофраж") counts only after the pour. A real (not "without") step always counts.
+   */
+  function covered(rec, i) {
+    const st = S.STEPS[i];
+    if (!rec || !st || !rec[st.id]) return false;
+    return !rec[`${st.id}_na`] || i === 0 || covered(rec, i - 1);
+  }
+  /** Step i covered as "without" (no work done, nothing built). */
+  const coveredNa = (rec, i) => covered(rec, i) && !!rec[`${S.STEPS[i].id}_na`];
+  /** Date a covered step counts from: its own date; a "without" step not before the step before it (stripped "without"
+   *  marked 10.11 on a pour poured 15.11 is covered from 15.11). "" when undated. */
+  function coveredDate(rec, i) {
+    const st = S.STEPS[i];
+    let d = dateOk(rec[`${st.id}_date`]) ? rec[`${st.id}_date`] : "";
+    if (i > 0 && rec[`${st.id}_na`]) { const p = coveredDate(rec, i - 1); if (p > d) d = p; }
+    return d;
+  }
+
   // Each step is measured in its own quantity (user 16.11.2026: formwork was shown in m³): formwork and stripping by
   // formwork area (sides + bottom, m²), rebar by weight (kg), poured by concrete volume (m³) - as in S.STEP_QTY.
   // A model without that quantity (older pour export) falls back to concrete volume, then to the object count.
@@ -51,7 +72,8 @@
   const qtyOf = (o, key) => (typeof o[key] === "number" && isFinite(o[key]) ? o[key] : 0);
 
   /**
-   * Overall progress per step, each in its own quantity, and by count. A step marked "without" counts as covered.
+   * Overall progress per step, each in its own quantity, and by count. A step marked "without" counts as covered once the
+   * step before it is covered (covered(); an unpoured pour with stripped "without" is not stripped). Totals are unchanged.
    * @param objects [{guid, pour, volume, formwork, rebar}]; records Map guid -> record (client-safe)
    * @returns {total:{count, volume}, steps:{formwork:{count, qty, total, unit, pct}, ...}, poursComplete:{formwork: n, ...}, pours}
    */
@@ -72,36 +94,38 @@
       const rec = records.get(o.guid);
       if (!byPour.has(o.pour)) byPour.set(o.pour, []);
       byPour.get(o.pour).push(rec);
-      for (const st of S.STEPS) if (rec && rec[st.id]) { steps[st.id].count++; if (keyOf[st.id]) steps[st.id].qty += qtyOf(o, keyOf[st.id]); }
+      S.STEPS.forEach((st, i) => { if (covered(rec, i)) { steps[st.id].count++; if (keyOf[st.id]) steps[st.id].qty += qtyOf(o, keyOf[st.id]); } });
     }
     for (const st of S.STEPS) {
       const s = steps[st.id];
       s.pct = s.total > 0 ? s.qty / s.total : total.count ? s.count / total.count : 0;
     }
     const poursComplete = {};
-    for (const st of S.STEPS) poursComplete[st.id] = [...byPour.values()].filter((recs) => recs.every((r) => r && r[st.id])).length;
+    S.STEPS.forEach((st, i) => { poursComplete[st.id] = [...byPour.values()].filter((recs) => recs.every((r) => covered(r, i))).length; });
     return { total, steps, poursComplete, pours: byPour.size };
   }
 
   /**
-   * Per pour number, per step: how many objects are done and the date the step was completed for the whole pour
-   * (latest date, only when all objects have it), else the latest date so far.
+   * Per pour number, per step: how many objects are done (covered(): "without" only after the step before it), how many
+   * of those are "without" (na), and the date the step was completed for the whole pour (latest date, only when all
+   * objects have it), else the latest date so far. A "without" step's date is not before the step before it.
    * @param pours [{label, objects:[{guid}]}] in display order
    */
   function perPour(pours, records) {
     return pours.map((g) => {
       const row = { label: g.label, total: g.objects.length, steps: {} };
-      for (const st of S.STEPS) {
-        let n = 0, last = "";
+      S.STEPS.forEach((st, i) => {
+        let n = 0, na = 0, last = "";
         for (const o of g.objects) {
           const r = records.get(o.guid);
-          if (!r || !r[st.id]) continue;
+          if (!covered(r, i)) continue;
           n++;
-          const d = r[`${st.id}_date`];
-          if (dateOk(d) && d > last) last = d;
+          if (r[`${st.id}_na`]) na++;
+          const d = coveredDate(r, i);
+          if (d && d > last) last = d;
         }
-        row.steps[st.id] = { done: n, complete: n === g.objects.length && n > 0, date: last || null };
-      }
+        row.steps[st.id] = { done: n, na, complete: n === g.objects.length && n > 0, date: last || null };
+      });
       return row;
     });
   }
@@ -144,5 +168,5 @@
     return min ? { min, max } : null;
   }
 
-  return { UNIT, fromPsets, recordAsOf, recordsAsOf, overall, perPour, timeline, dateRange };
+  return { UNIT, fromPsets, recordAsOf, recordsAsOf, covered, coveredNa, coveredDate, overall, perPour, timeline, dateRange };
 });

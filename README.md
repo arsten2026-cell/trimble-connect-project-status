@@ -9,7 +9,9 @@ that **Pour status (Arsten)** stores in the project library "CIP/Монолит�
 | `app.js` / `index.html` | Panel + Workspace API |
 | `common.js`, `status.js`, `psetapi.js` | Copied from `viewer-pour-status` at publish (same stages, colours, reading) |
 | `arsten-access.js` | Copied from `shared/` at publish; access for ADMIN, CLIENT, GENERAL CONTRACTOR (`app: "projectStatus"`) |
-| `demo.js` | `index.html?demo`, made-up progress on the 1028 fixture. Not published. |
+| `client-summary.js` | Pure: client summary build / whitelist validation (no names, notes, logs, rejection texts), file list, read-only folder lookup, headline, by-type groups. Tests: `node --test test/client-summary.test.js` |
+| `arsten-backup.js`, `arsten-acceptance.js` | Copied from `shared/` at publish: upload of the summary file; rebar acceptance (admin / GC only) |
+| `demo.js` | `index.html?demo` (admin: publish), `?demo&client` (two published summaries), `&lang=en`, `&nosum`. Not published. UI smoke test: `node --test test/ui.test.js` |
 
 ## What it shows
 - **Colour by status** (tick box; the panel never changes the model's colours by itself, so a saved view stays as
@@ -20,4 +22,13 @@ that **Pour status (Arsten)** stores in the project library "CIP/Монолит�
 - **As of date** slider: everything (numbers, table, colours) as it was at the end of that day.
 - **Save view**: Connect view of the current colouring (`view.createView`); the admin shares it from Views.
 
-Not shown: notes, who marked, history, rebar / formwork / embed quantities, Excel (decided 12.11.2026).
+- **Headline** (A18): "62% излято (204 / 329 m³) · +38 m³ тази седмица · 9 / 14 такта" and "Въз основа на: етап, модели (версия, дата), дата".
+  The four bars are under "Подробности" (collapsed for clients, plain stage names).
+- **Публикувай за клиента** (admin / GC, week 3): one client-safe JSON per day in `_ArstenDocs/Client/summary-<YYYY-MM-DD>.json`
+  (same day again = a new version of the same file), with the PM's note to the client. The CLIENT role reads only these
+  files when any exist (picker "Както е публикувано на"); without any it falls back to the live view. Admin / GC: "Виж като клиент".
+- **Арм. приета** column (✓ / чака / –), from the acceptance records (read only for admin / GC; the client gets it via the summary).
+- **По тип / Списък**: pours grouped by their main Pour_Type.
+- Clients: no "Запази изглед"; English by default when the Connect language is not Bulgarian.
+
+Not shown: notes, who marked, history, rejection texts, Excel (decided 12.11.2026).

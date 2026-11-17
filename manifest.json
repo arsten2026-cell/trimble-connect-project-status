@@ -1,5 +1,5 @@
 {
-  "title": "Project status (Arsten)",
+  "title": "Project status (Arsten / Multiplan)",
   "url": "https://arsten2026-cell.github.io/trimble-connect-project-status/index.html",
   "icon": "https://arsten2026-cell.github.io/trimble-connect-project-status/icon.svg",
   "description": "Read-only construction progress for the client: model coloured by stage, progress by concrete volume, dates per pour and a timeline. Data from Pour status (Arsten).",

@@ -48,6 +48,26 @@
   .asof { display:flex; justify-content:space-between; font-size:12px; }
   .asof b { font-variant-numeric:tabular-nums; }
   .note { font-size:11.5px; color:var(--muted); margin-top:6px; }
+  .hl { font-size:13px; line-height:1.5; }
+  .hl .big { font-size:24px; font-weight:600; color:var(--accent); vertical-align:-2px; margin-right:4px; }
+  .hl .num { color:var(--muted); font-variant-numeric:tabular-nums; }
+  .basis { font-size:11.5px; color:var(--muted); margin-top:6px; }
+  .basis b { color:var(--ink); font-weight:600; }
+  .cnote { font-size:12.5px; margin-top:8px; padding:6px 8px; border-left:3px solid var(--accent); background:#fbf3ec; white-space:pre-wrap; }
+  details.det > summary { cursor:pointer; font-size:12px; margin:16px 0 6px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); min-height:32px; display:flex; align-items:center; }
+  details.det > summary::-webkit-details-marker { display:none; }
+  details.det > summary::before { content:"▸"; margin-right:6px; }
+  details.det[open] > summary::before { content:"▾"; }
+  .seg { display:inline-flex; margin-left:auto; }
+  .seg button { background:transparent; color:var(--ink); border-color:var(--line); }
+  .seg button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .h2bar { display:flex; align-items:center; gap:8px; margin:16px 0 6px; }
+  .h2bar h2 { margin:0; }
+  tr.grp td { background:#f1ede4; font-weight:600; font-size:12px; padding-top:7px; }
+  td.c.ok { color:#2E7D32; font-weight:600; }
+  .fld { display:block; font-size:12px; color:var(--muted); margin:8px 0 3px; }
+  input[type=text], textarea { font:inherit; width:100%; padding:6px; border:1px solid var(--line); background:#fff; border-radius:0; }
+  textarea { resize:vertical; min-height:56px; }
 </style>
 </head>
 <body>
@@ -57,25 +77,45 @@
   <div id="status" class="status">Connecting to Trimble Connect…</div>
 
   <div id="main" hidden>
-    <div class="box">
+    <div class="box" id="headline"></div>
+
+    <h2 id="hPub" hidden></h2>
+    <div class="box" id="pubBox" hidden>
+      <label class="chk"><input type="checkbox" id="chkAsClient"> <span id="lblAsClient"></span></label>
+      <div class="sub" id="pubWho" hidden></div>
+      <div id="pubForm">
+        <label class="fld" for="inStage" id="lblStage"></label><input type="text" id="inStage" maxlength="200">
+        <label class="fld" for="inNote" id="lblNote"></label><textarea id="inNote" rows="3" maxlength="2000"></textarea>
+        <div class="bar"><button id="btnPublish"></button><span class="sub" id="pubInfo"></span></div>
+        <div class="sub" id="pubHint"></div>
+      </div>
+    </div>
+
+    <div class="box" id="sumBox" hidden style="margin-top:8px">
+      <label class="chk"><span id="lblSum"></span> <select id="selSum"></select></label>
+    </div>
+
+    <div class="box" style="margin-top:8px">
       <div class="bar" style="margin-top:0">
-        <label class="chk"><input type="checkbox" id="chkColour"> <span id="lblColour"></span></label>
+        <label class="chk"><input type="checkbox" id="chkColour" checked> <span id="lblColour"></span></label>
         <button id="btnView" class="small secondary" style="margin-left:auto"></button>
       </div>
       <div id="legend" class="legend"></div>
     </div>
 
     <h2 id="hAsOf"></h2>
-    <div class="box">
+    <div class="box" id="asOfBox">
       <div class="asof"><span id="lblAsOf"></span><b id="asOfDate"></b></div>
       <input type="range" id="rngAsOf" min="0" max="0" value="0">
       <div class="bar" style="margin-bottom:0"><button id="btnToday" class="small secondary"></button></div>
     </div>
 
-    <h2 id="hOverall"></h2>
-    <div class="box" id="overall"></div>
+    <details class="det" id="details"><summary id="sumDetails"></summary>
+      <div class="box" id="overall"></div>
+    </details>
 
-    <h2 id="hPours"></h2>
+    <div class="h2bar"><h2 id="hPours"></h2>
+      <span class="seg"><button id="btnByType" class="small"></button><button id="btnList" class="small"></button></span></div>
     <table><thead id="pourHead"></thead><tbody id="pourRows"></tbody></table>
 
     <h2 id="hTimeline"></h2>
@@ -83,14 +123,19 @@
     <div class="bar"><button id="btnMore" class="small secondary" hidden></button></div>
   </div>
 </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/trimble-connect-workspace-api@0.3.38/dist/iife/trimbleconnect.workspace.api.js" integrity="sha384-lFiNt/56q6HnUNbuy0WHO3NP6BkQjY4EH8+5eELYVfnhkB42snRTmSa3UOAlX9gg" crossorigin="anonymous"></script>
-<script src="arsten-access.js?v=c29c3b3f4f"></script>
+<script src="arsten-perf.js?v=21f7454938"></script>
+<script src="arsten-access.js?v=b6f528e602"></script>
 <script src="common.js?v=a04c428e31"></script>
-<script src="status.js?v=157dd5a2f6"></script>
-<script src="psetapi.js?v=cb56112323"></script>
+<script src="status.js?v=900f56b5c0"></script>
+<script src="psetapi.js?v=3ecda69f18"></script>
 <script src="arsten-links.js?v=7bf607a606"></script>
-<script src="progress.js?v=b0318bd2d0"></script>
-<script src="app.js?v=a2b656897a"></script>
+<script src="arsten-acceptance.js?v=3fb82d4a41"></script>
+<script src="arsten-backup.js?v=6474f7830d"></script>
+<script src="progress.js?v=7669b8fbe4"></script>
+<script src="client-summary.js?v=12285cbf86"></script>
+<script src="app.js?v=9fefe9249f"></script>
 </body>
 </html>
