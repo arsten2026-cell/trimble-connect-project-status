@@ -1,5 +1,5 @@
 // Printable weekly / monthly report (week 4, B-Client 4) and the steel card text (B-Client 2). Since 17.11.2026 also the
-// site works of the period ("Работи на обекта", summary version 4, site-items.js).
+// period's activities ("Дейности на обекта", summary version 4, shared/arsten-activities.js).
 // Built ONLY from a published client summary (client-summary.js; the client view, or "Виж като клиент" for staff), so
 // it can never show more than the client may see. Print: the panel shows this HTML in place of the panel and calls
 // window.print(); the print stylesheet (index.html, @media print) hides everything else. No PDF library: the browser's
@@ -22,7 +22,7 @@
     week: ["За седмицата", "This week"], month: ["За месеца", "This month"], thisMonth: ["този месец", "this month"], poursPlus: ["такта", "pours"], poursPlus1: ["такт", "pour"], byPour: ["По тактове (по тип)", "By pour (by type)"], pour: ["Такт", "Pour"], rebarAcc: ["Арм. приета", "Rebar accepted"],
     pending: ["чака", "pending"], without: ["без", "n/a"], noType: ["Без тип", "No type"], groupPoured: ["излети", "poured"],
     period: ["Изпълнено в периода", "Done in the period"], none: ["Няма завършени етапи в периода.", "No stages completed in the period."],
-    note: ["Бележка", "Note"], site: ["Работи на обекта", "Site works"], basedOn: ["Въз основа на", "Based on"], loadedModels: ["заредените модели", "the loaded models"], dataAsOf: ["данни към", "data as of"],
+    note: ["Бележка", "Note"], site: ["Дейности на обекта", "Site activities"], basedOn: ["Въз основа на", "Based on"], loadedModels: ["заредените модели", "the loaded models"], dataAsOf: ["данни към", "data as of"],
     steel: ["Стомана", "Steel"], erected: ["монтирано", "erected"], delivered: ["доставено", "delivered"], fabricated: ["изработено", "fabricated"],
     erectedN: ["монтирани", "erected"], deliveredN: ["доставени", "delivered"], fabricatedN: ["изработени", "fabricated"], asmWord: ["сглобки", "assemblies"], pcs: ["бр.", "pcs"],
     steelWeight: ["стомана: % по тегло от модела", "steel: % by weight from the model"],

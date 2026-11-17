@@ -26,7 +26,7 @@
 
   // 2: per pour step "na" (round 10 H1). 3 (week 4): optional "steel" totals (B-Client 2) and basedOn.unnumbered (round 14:
   // objects with no pour number are no takt). Version 1 and 2 files are still read; they may not carry the version 3 keys.
-  // 4 (17.11.2026): optional "site" - the site works shown to the client ({text, date}, site-items.js forSummary). A
+  // 4 (17.11.2026): optional "site" - the activities shown to the client ({text, date}, shared/arsten-activities.js forSummary). A
   // summary without site works is still written as version 3, so a panel that knows only 1-3 still reads it.
   const TYPE = "arsten-client-summary", VERSION = 4;
   const SITE_TEXT_MAX = 200, SITE_MAX = 300;

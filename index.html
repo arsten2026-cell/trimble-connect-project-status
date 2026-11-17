@@ -66,18 +66,8 @@
   tr.grp td { background:#f1ede4; font-weight:600; font-size:12px; padding-top:7px; }
   td.c.ok { color:#2E7D32; font-weight:600; }
   .fld { display:block; font-size:12px; color:var(--muted); margin:8px 0 3px; }
-  /* site works ("Работи на обекта", site-items.js) */
-  .site li { align-items:flex-start; flex-wrap:wrap; }
-  .site .txt { flex:1 1 150px; min-width:0; overflow-wrap:anywhere; }
-  .site .open .d { color:var(--accent); }
-  .site li.editing { background:#FFF4EA; }
-  .site .acts { display:flex; flex-wrap:wrap; gap:4px; flex-basis:100%; margin-left:82px; }
-  .site .acts button { min-height:24px; padding:2px 8px; font-size:11px; }
-  .site .acts button[aria-pressed=true] { border-color:var(--ink); }
-  .siteAdd button, .site .sub button, #btnSiteMore { min-height:24px; }
-  .siteAdd { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:8px; }
-  .siteAdd input[type=text] { flex:1 1 220px; width:auto; }
-  .siteAdd input[type=date] { font:inherit; padding:5px; border:1px solid var(--line); background:#fff; border-radius:0; }
+  /* Дейности for the client (shared/arsten-activities.js) */
+  .site .txt { flex:1; min-width:0; overflow-wrap:anywhere; }
   input[type=text], textarea { font:inherit; width:100%; padding:6px; border:1px solid var(--line); background:#fff; border-radius:0; }
   textarea { resize:vertical; min-height:56px; }
   .ask { margin:8px 0; padding:8px 10px; border-left:3px solid var(--bad); background:#fbeeed; font-size:12.5px; }
@@ -145,18 +135,11 @@
       </div>
     </div>
 
-    <!-- site works (site-items.js): staff edit the list; the client sees the ones published in the summary -->
+    <!-- Дейности for the client (from the published summary; entered in the Дейности panel) -->
     <h2 id="hSite" hidden></h2>
     <div class="box" id="siteBox" hidden>
       <div class="sub" id="siteHint"></div>
       <ul class="tl site" id="siteList"></ul>
-      <div class="siteAdd" id="siteAdd">
-        <input type="text" id="inSiteText" maxlength="200">
-        <input type="date" id="inSiteDate">
-        <label class="chk"><input type="checkbox" id="chkSiteClient" checked> <span id="lblSiteClient"></span></label>
-        <button id="btnSiteAdd" class="small"></button><button id="btnSiteCancel" class="small secondary" hidden></button>
-      </div>
-      <div class="bar" style="margin-bottom:0"><button id="btnSiteMore" class="small secondary" hidden></button></div>
     </div>
 
     <div class="box" id="sumBox" hidden style="margin-top:8px">
@@ -211,7 +194,7 @@
 <script src="arsten-perf.js?v=21f7454938"></script>
 <script src="arsten-diag.js?v=bb0c6351fe"></script>
 <script src="arsten-i18n.js?v=de006467e2"></script>
-<script src="arsten-access.js?v=804b676e26"></script>
+<script src="arsten-access.js?v=253829d007"></script>
 <script src="common.js?v=a04c428e31"></script>
 <script src="status.js?v=900f56b5c0"></script>
 <script src="psetapi.js?v=f5bc3d57fb"></script>
@@ -222,9 +205,9 @@
 <script src="records.js?v=f037461491"></script>
 <script src="fabrication.js?v=7108b8ac3e"></script>
 <script src="steel-summary.js?v=05bef6fa3f"></script>
-<script src="client-summary.js?v=eef7ca9fb9"></script>
-<script src="report.js?v=77ce67a8fa"></script>
-<script src="site-items.js?v=45bafdb057"></script>
-<script src="app.js?v=7beff48419"></script>
+<script src="client-summary.js?v=a5e83177a2"></script>
+<script src="report.js?v=5c6050540f"></script>
+<script src="arsten-activities.js?v=a3cf06e68b"></script>
+<script src="app.js?v=97f583fa05"></script>
 </body>
 </html>
