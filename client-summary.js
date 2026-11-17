@@ -26,7 +26,10 @@
 
   // 2: per pour step "na" (round 10 H1). 3 (week 4): optional "steel" totals (B-Client 2) and basedOn.unnumbered (round 14:
   // objects with no pour number are no takt). Version 1 and 2 files are still read; they may not carry the version 3 keys.
-  const TYPE = "arsten-client-summary", VERSION = 3;
+  // 4 (17.11.2026): optional "site" - the site works shown to the client ({text, date}, site-items.js forSummary). A
+  // summary without site works is still written as version 3, so a panel that knows only 1-3 still reads it.
+  const TYPE = "arsten-client-summary", VERSION = 4;
+  const SITE_TEXT_MAX = 200, SITE_MAX = 300;
   // The project's tool folder is _AM_Docs (renamed from _ArstenDocs on 17.11.2026, one name for Arsten and Multiplan).
   // Lookups take _AM_Docs first and fall back to an old _ArstenDocs; only _AM_Docs is ever created.
   const DOCS = "_AM_Docs", DOCS_OLD = "_ArstenDocs";
@@ -159,6 +162,11 @@
     };
     const steel = SP && o.steel ? SP.clean(o.steel) : null;   // totals only, whatever o.steel carries
     if (steel) sum.steel = steel;
+    // site works (version 4): text and day only, done on or before the summary day; none = version 3 as before
+    const site = (Array.isArray(o.site) ? o.site : []).filter((x) => x && DAY_RE.test(String(x.date)) && x.date <= date && str(x.text, SITE_TEXT_MAX))
+      .slice(0, SITE_MAX).map((x) => ({ text: str(x.text, SITE_TEXT_MAX), date: x.date }));
+    if (site.length) { sum.site = site; sum.version = 4; }
+    else sum.version = 3;
     return sum;
   }
 
@@ -170,7 +178,7 @@
     let lastKey = null, last = null;
     const keyOf = (o) => {
       const b = o.basedOn || {};
-      return [o.date, o.objects, o.pours, o.loose, o.records, o.accepted, o.project, o.note || "", b.stage || "", b.models, o.steel];
+      return [o.date, o.objects, o.pours, o.loose, o.records, o.accepted, o.project, o.note || "", b.stage || "", b.models, o.steel, o.site];
     };
     const same = (a, b) => !!a && a.length === b.length && a.every((x, i) => x === b[i]);
     return function liveBuild(o) {
@@ -205,6 +213,8 @@
     steel: Object.assign(obj({ model: T.b, byWeight: T.b,
       count: obj({ total: T.i, fabricated: T.i, delivered: T.i, erected: T.i }),
       kg: obj({ total: T.nn, fabricated: T.nn, delivered: T.nn, erected: T.nn }) }), { optional: true }),
+    // version 4: site works the staff marked for the client - what was done and the day, nothing else
+    site: { t: "array", max: SITE_MAX, optional: true, of: obj({ text: T.s(SITE_TEXT_MAX), date: T.day }) },
   });
   const V3_KEYS = [["steel"], ["basedOn", "unnumbered"]];   // not allowed in a version 1 / 2 file
   // keys that must never appear anywhere (defence in depth: the whitelist already refuses them; this names them)
@@ -255,6 +265,7 @@
       // known versions only (a newer file is refused rather than half shown); the version 3 keys only from version 3 on
       const ver = sum.version;
       if (Number.isInteger(ver) && (ver < 1 || ver > VERSION)) errors.push(`version: ${ver} not supported (1-${VERSION})`);
+      if (Number.isInteger(ver) && ver < 4 && Object.prototype.hasOwnProperty.call(sum, "site")) errors.push("site: not allowed before version 4");
       if (Number.isInteger(ver) && ver < 3) {
         for (const p of V3_KEYS) {
           const parent = p.length > 1 ? sum[p[0]] : sum;

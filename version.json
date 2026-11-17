@@ -1,17 +1,18 @@
 {
   "panel": "project-status",
   "repo": "arsten2026-cell/trimble-connect-project-status",
-  "id": "797e8c4991",
-  "built": "2026-11-17T18:37:50.543Z",
+  "id": "ff0442ddbc",
+  "built": "2026-11-17T20:39:01.614Z",
   "files": {
-    "app.js": "b4f7d3f4ec",
+    "app.js": "7beff48419",
     "arsten-perf.js": "21f7454938",
     "arsten-diag.js": "bb0c6351fe",
     "arsten-i18n.js": "de006467e2",
     "progress.js": "7669b8fbe4",
-    "client-summary.js": "4fe1d588f0",
+    "client-summary.js": "eef7ca9fb9",
     "steel-summary.js": "05bef6fa3f",
-    "report.js": "07a4f00296",
+    "report.js": "77ce67a8fa",
+    "site-items.js": "45bafdb057",
     "records.js": "f037461491",
     "fabrication.js": "7108b8ac3e",
     "common.js": "a04c428e31",
@@ -23,6 +24,6 @@
     "arsten-backup.js": "032cc821bb",
     "manifest.json": "33bcde7926",
     "icon.svg": "15aedc4336",
-    "index.html": "fb12922864"
+    "index.html": "9006ada73c"
   }
 }

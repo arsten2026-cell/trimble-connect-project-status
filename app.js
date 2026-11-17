@@ -13,11 +13,14 @@
 // Week 4: steel totals in the summary (B-Client 2; staff read STEEL/Монтаж read-only, the client never does), the
 // printable report "Печат / PDF" of a published summary (B-Client 4, report.js), and objects without a pour number are
 // no takt (round 14: kept apart in state.loose, "Без номер на такт: N елемента" for staff, left out of the summary).
+// Site works (17.11.2026, site-items.js): things done on site that are not in the model ("Additional site toilets
+// delivered"). Staff (admin, PM, GC) keep the list in _AM_Docs/Site/site-items.json; the ones ticked "за клиента" with a
+// date go into the published summary (version 4) and the weekly / monthly report. The client never reads the list itself.
 (() => {
   "use strict";
   const C = window.PourLogic, S = window.PourStatus, A = window.PsetApi, P = window.ProjectProgress, CS = window.ClientSummary;
   const ACC = window.ArstenAcceptance, B = window.ArstenBackup;
-  const R = window.SteelRecords, F = window.SteelFab, SP = window.SteelProgress, RP = window.ClientReport;
+  const R = window.SteelRecords, F = window.SteelFab, SP = window.SteelProgress, RP = window.ClientReport, SI = window.SiteItems;
   const ASSEMBLY = "IfcElementAssembly";
   const $ = (id) => document.getElementById(id);
   const PROXY = "IfcBuildingElementProxy";
@@ -55,8 +58,8 @@
     rebarAcc: ["Арм. приета", "Rebar accepted"], pending: ["чака", "pending"],
     byType: ["По тип", "By type"], list: ["Списък", "List"], noType: ["Без тип", "No type"],
     groupPoured: ["излети", "poured"], without: ["без", "n/a"],
-    pubHint: ["Публикува се само: количества по етапи, дати по тактове, „армировка приета“ да/не, общо за стоманата (изработено / доставено / монтирано), бележката и „въз основа на“. Без имена, марки, вътрешни бележки и история.",
-      "Published: quantities per stage, dates per pour, \"rebar accepted\" yes/no, steel totals (fabricated / delivered / erected), the note and \"based on\". No names, marks, internal notes or history."],
+    pubHint: ["Публикува се само: количества по етапи, дати по тактове, „армировка приета“ да/не, общо за стоманата (изработено / доставено / монтирано), работите на обекта „за клиента“, бележката и „въз основа на“. Без имена, марки, вътрешни бележки и история.",
+      "Published: quantities per stage, dates per pour, \"rebar accepted\" yes/no, steel totals (fabricated / delivered / erected), the site works marked \"for the client\", the note and \"based on\". No names, marks, internal notes or history."],
     loose: ["Без номер на такт", "No pour number"], looseHint: ["не се броят като такт", "not counted as a pour"],
     print: ["Печат / PDF", "Print / PDF"], back: ["Назад", "Back"], week: ["Седмица", "Week"], month: ["Месец", "Month"],
     printHint: ["В прозореца за печат изберете „Запази като PDF“ за файл.", "In the print dialog choose \"Save as PDF\" for a file."],
@@ -74,6 +77,27 @@
     pubCancelled: ["Публикуването е отказано – нищо не е качено.", "Publishing cancelled – nothing was uploaded."],
     // round 16 (L4): "Виж като клиент" shows only what the client sees, plus this one control
     leaveClient: ["Изход от изгледа като клиент", "Leave the client view"],
+    // site works (site-items.js)
+    site: ["Работи на обекта", "Site works"],
+    siteHint: ["Неща извън модела (доставки, разбиване, временни съоръжения). При клиента отиват само записите с дата и „за клиента“ – в резюмето и в седмичния / месечния отчет, при следващото публикуване. Без дата = предстои, само вътрешно.",
+      "Things not in the model (deliveries, demolition, temporary works). Only entries with a date and \"for the client\" reach the client – in the summary and the weekly / monthly report, at the next publish. No date = planned, internal only."],
+    siteClientHint: ["Записи от последните 30 дни.", "Entries from the last 30 days."],
+    sitePh: ["напр. Доставени допълнителни тоалетни на обекта", "e.g. Additional site toilets delivered"],
+    siteForClient: ["за клиента", "for the client"], siteAdd: ["Добави", "Add"], siteOpen: ["предстои", "planned"],
+    siteInternal: ["само вътрешно", "internal only"], siteNone: ["Още няма записани работи.", "No site works yet."],
+    siteDoneToday: ["Отбележи като извършено днес", "Mark as done today"], siteDoneShort: ["✓ днес", "✓ today"], siteEdit: ["Промени", "Edit"], siteDel: ["Изтрий", "Delete"],
+    siteIsClient: ["клиент", "client"], siteIsInternal: ["вътр.", "internal"], siteLater: ["за клиента след дата", "for the client once dated"],
+    siteSave: ["Запази", "Save"], siteCancel: ["Откажи", "Cancel"], siteRetry: ["Опитай пак", "Try again"],
+    siteTextLbl: ["Описание", "Description"], siteDateLbl: ["Дата (празно = предстои)", "Date (empty = planned)"],
+    siteShowClient: ["Покажи на клиента", "Show to the client"], siteHideClient: ["Скрий от клиента", "Hide from the client"],
+    siteMore: ["Покажи всички", "Show all"], siteLoading: ["Зареждане на работите на обекта…", "Loading the site works…"],
+    siteErr: ["Работите на обекта не се четат", "The site works cannot be read"],
+    siteDelQ: ["Да изтрия ли този запис?", "Delete this entry?"],
+    siteBadText: ["Напишете какво е направено.", "Write what was done."], siteBadDate: ["Датата не е вярна или е в бъдещето.", "The date is not valid or is in the future."],
+    siteGone: ["Записът е изтрит междувременно от друг потребител.", "The entry was deleted meanwhile by another user."],
+    siteFull: ["Списъкът е пълен.", "The list is full."], siteSaved: ["Записано", "Saved"],
+    sitePub: ["Работи на обекта за клиента", "Site works for the client"], siteWeek: ["в последните 7 дни", "in the last 7 days"],
+    siteReadFail: ["Работите на обекта не можаха да се прочетат – публикуване без тях?", "The site works could not be read – publish without them?"],
   };
   // plain stage names for the client look (A18)
   const PLAIN = {
@@ -123,6 +147,7 @@
     caps: [],
     staffStatus: "",               // round 16: the staff status line, put back when leaving "Виж като клиент"
     steelAsk: null,                // round 16 M1: {error, had, resolve} while the publish box asks "publish without steel?"
+    site: { items: [], loaded: false, err: null, busy: false, showAll: false, editing: null, dateSet: false, addClient: true },   // site works (staff only), site-items.js
     group: (() => { try { return localStorage.getItem(GROUP_KEY) || "type"; } catch { return "type"; } })(),
   };
   /** The panel's role from the access result: works with the single role (access.role) and with the role union
@@ -521,7 +546,127 @@
       <span><b>${esc(e.pour)}</b> · ${esc(stageName(stepById[e.step]))}${extra ? `<br><span class="sub">${extra}</span>` : ""}</span></li>`;
     }).join("") : `<li class="sub">${esc(t("noEvents"))}</li>`;
     $("btnMore").hidden = state.showAll || tl.length <= 30;
+    renderSite(summary ? sum : null);
     renderReport();
+  }
+
+  // ---------- site works ("Работи на обекта", site-items.js) ----------
+  // Audit 17.11: editing happens in the add row (no prompt dialogs; the date picker for both); an edit sends only the
+  // fields that changed (another user's "done" is not undone); the date field is set only when the row is reset, never by
+  // a re-render; a failed read offers "Опитай пак"; the text field is locked while saving.
+  const SITE_SHOWN = 15, SITE_CLIENT_DAYS = 30;
+  const siteRerender = () => renderSite(inSummary() ? shown() : null);
+  /** Clear the add row back to "new entry, done today". */
+  function siteResetForm() {
+    state.site.editing = null; state.site.editFrom = null;
+    $("inSiteText").value = ""; $("inSiteDate").value = S.today(); $("chkSiteClient").checked = state.site.addClient !== false;
+  }
+  /** Staff (live look): the editable list. Client look: the summary's site works of the last 30 days, read-only. */
+  function renderSite(sum) {
+    const client = clientLook();
+    const staffList = !client && isStaff() && !!SI;
+    const rows = client ? (sum && sum.site ? sum.site.filter((x) => x.date > CS.addDays(sum.date, -SITE_CLIENT_DAYS)) : []) : staffList ? state.site.items : [];
+    const show = staffList || rows.length > 0;
+    $("hSite").hidden = !show; $("siteBox").hidden = !show;
+    if (!show) return;
+    $("hSite").textContent = t("site");
+    $("siteHint").textContent = client ? t("siteClientHint") : t("siteHint");
+    $("siteAdd").hidden = client;
+    if (client) {
+      $("siteList").innerHTML = rows.map((x) => `<li><span class="d">${esc(fmtDate(x.date))}</span><span class="txt">${esc(x.text)}</span></li>`).join("");
+      $("btnSiteMore").hidden = true;
+      return;
+    }
+    const st = state.site, editing = st.editing;
+    if (!st.dateSet) { $("inSiteDate").value = S.today(); st.dateSet = true; }   // once; later only siteResetForm sets it
+    $("inSiteText").placeholder = t("sitePh");
+    $("inSiteText").setAttribute && $("inSiteText").setAttribute("aria-label", t("siteTextLbl"));
+    $("inSiteDate").title = t("siteDateLbl");
+    $("inSiteDate").setAttribute && $("inSiteDate").setAttribute("aria-label", t("siteDateLbl"));
+    $("inSiteDate").max = S.today();
+    $("lblSiteClient").textContent = t("siteForClient");
+    $("btnSiteAdd").textContent = t(editing ? "siteSave" : "siteAdd");
+    $("btnSiteCancel").textContent = t("siteCancel");
+    $("btnSiteCancel").hidden = !editing;
+    const busy = st.busy || !st.loaded;
+    $("btnSiteAdd").disabled = busy; $("inSiteText").disabled = st.busy; $("inSiteDate").disabled = st.busy;
+    $("chkSiteClient").disabled = st.busy; $("btnSiteCancel").disabled = st.busy;
+    if (!st.loaded) {
+      $("siteList").innerHTML = st.err ? `<li class="sub">${esc(`${t("siteErr")}: ${errText(st.err)}`)} <button class="small secondary" data-act="retry" data-id="">${esc(t("siteRetry"))}</button></li>`
+        : `<li class="sub">${esc(t("siteLoading"))}</li>`;
+      $("btnSiteMore").hidden = true;
+      return;
+    }
+    const list = st.showAll ? st.items : st.items.slice(0, SITE_SHOWN);
+    const btn = (act, id, label, title, extra, aria) => `<button class="secondary" data-act="${act}" data-id="${esc(id)}" title="${esc(title)}" aria-label="${esc(aria || title)}"${extra || ""}${busy ? " disabled" : ""}>${esc(label)}</button>`;
+    // the tag says what reaches the client: internal, or "for the client once dated" for a planned client entry
+    const tag = (x) => (!x.client ? t("siteInternal") : !x.date ? t("siteLater") : "");
+    $("siteList").innerHTML = list.length ? list.map((x) => `<li class="${x.date ? "" : "open"}${editing === x.id ? " editing" : ""}"><span class="d">${esc(x.date ? fmtDate(x.date) : t("siteOpen"))}</span>
+      <span class="txt">${esc(x.text)}${tag(x) ? ` <span class="sub">(${esc(tag(x))})</span>` : ""}</span>
+      <span class="acts">${x.date ? "" : btn("done", x.id, t("siteDoneShort"), t("siteDoneToday"))}${btn("edit", x.id, t("siteEdit"), t("siteEdit"))}${btn("client", x.id, x.client ? t("siteIsClient") : t("siteIsInternal"), x.client ? t("siteHideClient") : t("siteShowClient"), ` aria-pressed="${x.client ? "true" : "false"}"`, t("siteForClient"))}${btn("del", x.id, "×", t("siteDel"))}</span></li>`).join("")
+      : `<li class="sub">${esc(t("siteNone"))}</li>`;
+    $("btnSiteMore").textContent = t("siteMore");
+    $("btnSiteMore").hidden = st.showAll || st.items.length <= SITE_SHOWN;
+  }
+  /** Read the site works (staff only). A failed read keeps the list closed for editing (never taken for "empty"). */
+  async function refreshSite() {
+    if (!SI || !isStaff()) return;
+    state.site.err = null; siteRerender();
+    try { const r = await SI.load(coreFor(), state.project.id, fetchFor()); state.site.items = r.items; state.site.loaded = true; }
+    catch (e) { state.site.err = e; console.warn("site works not read", e); }
+    siteRerender();
+  }
+  const SITE_ERR = { text: "siteBadText", date: "siteBadDate", gone: "siteGone", full: "siteFull" };
+  /** One change to the list: read afresh, apply, upload (site-items.js change). */
+  async function siteChange(op) {
+    if (!SI || !isStaff() || state.site.busy) return false;
+    state.site.busy = true; siteRerender();
+    try {
+      const r = await SI.change({ core: coreFor(), projectId: state.project.id, op, today: S.today(), fetch: fetchFor() });
+      state.site.items = r.items; state.site.loaded = true; state.site.err = null;
+      if (r.error) { setStatus(t(SITE_ERR[r.error] || "siteBadText"), true); return false; }
+      if (r.changed) setStatus(`${t("siteSaved")}: ${SI.FOLDER.join("/")}/${SI.FILE}`);
+      return true;
+    } finally { state.site.busy = false; siteRerender(); }
+  }
+  /** "Добави" (new entry) or "Запази" (the entry being edited: only the changed fields go). */
+  async function siteSubmit() {
+    const text = $("inSiteText").value, date = $("inSiteDate").value || "";
+    if (!String(text).trim()) { setStatus(t("siteBadText"), true); if ($("inSiteText").focus) $("inSiteText").focus(); return; }
+    const editing = state.site.editing && state.site.items.find((x) => x.id === state.site.editing);
+    let op;
+    if (state.site.editing && !editing) { setStatus(t("siteGone"), true); siteResetForm(); siteRerender(); return; }
+    if (editing) {
+      const e = { id: editing.id }, from = state.site.editFrom || editing;
+      if (SI.parse([{ id: "x", text }])[0].text !== from.text) e.text = text;
+      if (date !== from.date) e.date = date;
+      if ($("chkSiteClient").checked !== from.client) e.client = $("chkSiteClient").checked;
+      if (Object.keys(e).length === 1) { siteResetForm(); siteRerender(); return; }   // nothing changed
+      op = { edit: e };
+    } else { state.site.addClient = $("chkSiteClient").checked; op = { add: { text, date, client: state.site.addClient } }; }
+    if (await siteChange(op)) { siteResetForm(); siteRerender(); if ($("inSiteText").focus) $("inSiteText").focus(); }
+  }
+  async function siteAction(act, id) {
+    if (act === "retry") return refreshSite();
+    const x = state.site.items.find((i) => i.id === id);
+    if (!x) return;
+    if (act === "done") return siteChange({ edit: { id, date: S.today() } });
+    if (act === "client") return siteChange({ edit: { id, client: !x.client } });
+    if (act === "del") {
+      if (!window.confirm(`${t("siteDelQ")}\n\n${x.date ? fmtDate(x.date) + " · " : ""}${x.text}`)) return;
+      if (await siteChange({ remove: id }) && state.site.editing === id) siteResetForm();
+      return siteRerender();
+    }
+    if (act === "edit") {
+      if (!state.site.editing) state.site.addClient = $("chkSiteClient").checked;
+      state.site.editing = id;
+      // re-audit: compare with the entry as it was when editing started, so a ✓ / client click on it meanwhile (or
+      // another user's change) is not sent back
+      state.site.editFrom = { text: x.text, date: x.date, client: x.client };
+      $("inSiteText").value = x.text; $("inSiteDate").value = x.date; $("chkSiteClient").checked = x.client;
+      siteRerender();
+      if ($("inSiteText").focus) $("inSiteText").focus();
+    }
   }
   function renderPublish() {
     // the box ("Виж като клиент") for admin / GC; the publish form only for admin / PM (L8). Round 16: in "Виж като
@@ -626,6 +771,13 @@
     setStatus(lang === "bg" ? "Четене на стоманата (STEEL/Монтаж)…" : "Reading the steel (STEEL/Монтаж)…");
     const got = await readSteel();
     const steel = got.error ? null : got.steel || null;
+    // site works afresh (a read error asks "publish without them?", as the steel does: never dropped silently)
+    let siteOut = [];
+    if (SI) {
+      setStatus(lang === "bg" ? "Четене на работите на обекта…" : "Reading the site works…");
+      try { const r = await SI.load(coreFor(), state.project.id, fetchFor()); state.site.items = r.items; state.site.loaded = true; state.site.err = null; siteOut = SI.forSummary(r.items, day); }
+      catch (e) { console.warn("site works not read", e); setStatus(""); if (!window.confirm(t("siteReadFail") + `\n(${errText(e).slice(0, 160)})`)) { setStatus(t("pubCancelled")); return; } }
+    }
     const prev = await latestPublished();
     const hadSteel = !!(prev && prev.steel);
     if (got.error) {
@@ -636,7 +788,7 @@
     render();                          // the live view shows the fresh figures behind the confirm dialog
     setStatus(lang === "bg" ? "Подготовка на резюмето…" : "Preparing the summary…");
     const sum = CS.build({ date: day, now: new Date(), project: state.project, objects: state.objects, pours: state.pours, loose: state.loose, records: state.records,
-      accepted: state.accepted, note: $("inNote").value, basedOn: { stage: $("inStage").value, models: state.models }, steel });
+      accepted: state.accepted, note: $("inNote").value, basedOn: { stage: $("inStage").value, models: state.models }, steel, site: siteOut });
     const v = CS.validate(sum);
     if (!v.ok) throw new Error((lang === "bg" ? "Резюмето не е безопасно за клиента и НЕ е публикувано: " : "The summary is not client-safe and was NOT published: ") + v.errors.slice(0, 3).join("; "));
     const h = CS.headline(sum), again = state.summaries.some((f) => f.day === day);
@@ -647,6 +799,11 @@
     const qLines = q.split("\n");
     if (sum.steel && RP) qLines.splice(2, 0, RP.steelCard(sum.steel, lang).replace(/<[^>]+>/g, ""));
     else if (hadSteel) qLines.splice(2, 0, t("steelLeft"));   // round 16 M1: the client's steel card would disappear
+    // site works going out: how many, and how many in the report week
+    if (sum.site && sum.site.length) {
+      const wk = sum.site.filter((x) => x.date > sum.week.from).length;
+      qLines.splice(qLines.length - 1, 0, `${t("sitePub")}: ${sum.site.length} (${t("siteWeek")}: ${wk})`);
+    }
     // round 19 L8: the note that goes out with it (a note pre-filled from the last summary must not go out unseen)
     const noteOut = String(sum.clientNote || "").trim();
     const noteShown = noteOut.length > 300 ? noteOut.slice(0, 300) + "…" : noteOut;
@@ -714,6 +871,12 @@
   $("btnSteelGo").onclick = () => answerSteel(true);
   $("btnSteelCancel").onclick = () => answerSteel(false);
   $("btnPublish").onclick = () => guarded(publish);
+  $("btnSiteAdd").onclick = () => guarded(siteSubmit);
+  $("btnSiteCancel").onclick = () => { siteResetForm(); siteRerender(); };
+  const siteKey = (e) => { if (e.key === "Enter") { e.preventDefault(); guarded(siteSubmit); } else if (e.key === "Escape" && state.site.editing) { siteResetForm(); siteRerender(); } };
+  $("inSiteText").onkeydown = siteKey; $("inSiteDate").onkeydown = siteKey;
+  $("siteList").onclick = (e) => { const b = e.target.closest && e.target.closest("button[data-act]"); return b ? guarded(() => siteAction(b.dataset.act, b.dataset.id)) : undefined; };
+  $("btnSiteMore").onclick = () => { state.site.showAll = true; siteRerender(); };
   // B-Client 4: "Печат / PDF" opens the print view of the shown summary and the print dialog
   $("btnPrint").onclick = () => openReport();
   $("btnDoPrint").onclick = () => { if (typeof window.print === "function") window.print(); };
@@ -773,6 +936,7 @@
       + (sumErr && isStaff() ? ` · ${lang === "bg" ? "резюметата не се четат" : "summaries not readable"}: ${errText(sumErr)}` : "");
     setStatus(state.staffStatus);
     render();
+    if (!state.site.loaded && !state.site.busy) refreshSite();   // site works: once per panel open (each change reads the file afresh)
     if (state.coloured) await applyColours();
     // B-Client 2: steel totals for the staff live view, after the first screen (read-only; publishing reads them again).
     // Round 17 M1: only when the model set changed or the last read is older than 5 minutes.

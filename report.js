@@ -1,4 +1,5 @@
-// Printable weekly / monthly report (week 4, B-Client 4) and the steel card text (B-Client 2).
+// Printable weekly / monthly report (week 4, B-Client 4) and the steel card text (B-Client 2). Since 17.11.2026 also the
+// site works of the period ("Работи на обекта", summary version 4, site-items.js).
 // Built ONLY from a published client summary (client-summary.js; the client view, or "Виж като клиент" for staff), so
 // it can never show more than the client may see. Print: the panel shows this HTML in place of the panel and calls
 // window.print(); the print stylesheet (index.html, @media print) hides everything else. No PDF library: the browser's
@@ -21,7 +22,7 @@
     week: ["За седмицата", "This week"], month: ["За месеца", "This month"], thisMonth: ["този месец", "this month"], poursPlus: ["такта", "pours"], poursPlus1: ["такт", "pour"], byPour: ["По тактове (по тип)", "By pour (by type)"], pour: ["Такт", "Pour"], rebarAcc: ["Арм. приета", "Rebar accepted"],
     pending: ["чака", "pending"], without: ["без", "n/a"], noType: ["Без тип", "No type"], groupPoured: ["излети", "poured"],
     period: ["Изпълнено в периода", "Done in the period"], none: ["Няма завършени етапи в периода.", "No stages completed in the period."],
-    note: ["Бележка", "Note"], basedOn: ["Въз основа на", "Based on"], loadedModels: ["заредените модели", "the loaded models"], dataAsOf: ["данни към", "data as of"],
+    note: ["Бележка", "Note"], site: ["Работи на обекта", "Site works"], basedOn: ["Въз основа на", "Based on"], loadedModels: ["заредените модели", "the loaded models"], dataAsOf: ["данни към", "data as of"],
     steel: ["Стомана", "Steel"], erected: ["монтирано", "erected"], delivered: ["доставено", "delivered"], fabricated: ["изработено", "fabricated"],
     erectedN: ["монтирани", "erected"], deliveredN: ["доставени", "delivered"], fabricatedN: ["изработени", "fabricated"], asmWord: ["сглобки", "assemblies"], pcs: ["бр.", "pcs"],
     steelWeight: ["стомана: % по тегло от модела", "steel: % by weight from the model"],
@@ -128,9 +129,12 @@
     const events = CS.timelineOf(sum).filter((e) => e.date > from && e.date <= sum.date);
     const done = `<h2 class="rep-h2">${esc(t("period"))} <span class="sub">(${esc(f.date(CS.addDays(from, 1)))} – ${esc(f.date(sum.date))})</span></h2>`
       + (events.length ? `<ul class="rep-l">${events.map((e) => `<li><span class="d">${esc(f.date(e.date))}</span> <b>${esc(e.pour)}</b> · ${esc(f.stage(e.step))}</li>`).join("")}</ul>` : `<p class="sub">${esc(t("none"))}</p>`);
+    // site works (version 4): the ones done in the period, oldest first; no section when there are none
+    const siteRows = (sum.site || []).filter((x) => x && x.date > from && x.date <= sum.date).slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    const site = siteRows.length ? `<h2 class="rep-h2">${esc(t("site"))}</h2><ul class="rep-l rep-site">${siteRows.map((x) => `<li><span class="d">${esc(f.date(x.date))}</span> <span>${esc(x.text)}</span></li>`).join("")}</ul>` : "";
     const note = sum.clientNote ? `<div class="rep-note"><b>${esc(t("note"))}:</b> ${esc(sum.clientNote)}</div>` : "";
     const foot = `<div class="rep-basis">${basisHtml(sum, o.lang)}</div><div class="rep-foot">Arsten / Multiplan · ${esc(f.date(sum.date))}</div>`;
-    return head + headline + stages + steel + pours + done + note + foot;
+    return head + headline + stages + steel + pours + done + site + note + foot;
   }
 
   return { html, steelCard, basisExtras, basisHtml, periodFrom, PLAIN };
