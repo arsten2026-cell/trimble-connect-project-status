@@ -24,7 +24,7 @@ that **Pour status (Arsten / Multiplan)** (Монолитен бетон) stores
 
 - **Headline** (A18): "62% излято (204 / 329 m³) · +38 m³ тази седмица · 9 / 14 такта" and "Въз основа на: етап, модели (версия, дата), дата".
   The four bars are under "Подробности" (collapsed for clients, plain stage names).
-- **Публикувай за клиента** (admin / GC, week 3): one client-safe JSON per day in `_ArstenDocs/Client/summary-<YYYY-MM-DD>.json`
+- **Публикувай за клиента** (admin / GC, week 3): one client-safe JSON per day in `_AM_Docs/Client/summary-<YYYY-MM-DD>.json`
   (same day again = a new version of the same file), with the PM's note to the client. The CLIENT role reads only these
   files when any exist (picker "Както е публикувано на"); without any it falls back to the live view. Admin / GC: "Виж като клиент".
 - **Арм. приета** column (✓ / чака / –), from the acceptance records (read only for admin / GC; the client gets it via the summary).

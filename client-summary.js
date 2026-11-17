@@ -1,5 +1,5 @@
 // Client summary ("Публикувай за клиента", B-Client 1, week 3): ONE client-safe JSON per project per day, published by
-// admin / GC to the project folder _ArstenDocs/Client/summary-<YYYY-MM-DD>.json (Core 2.0 upload, same name the same day
+// admin / GC to the project folder _AM_Docs/Client/summary-<YYYY-MM-DD>.json (Core 2.0 upload, same name the same day
 // = a new version of that file). The client view reads ONLY these files when any exist (owner decision 2 pending).
 //
 // What a summary holds: totals per stage in the stage's own unit (m², kg, m³), per pour: label, type, object count, per
@@ -27,7 +27,15 @@
   // 2: per pour step "na" (round 10 H1). 3 (week 4): optional "steel" totals (B-Client 2) and basedOn.unnumbered (round 14:
   // objects with no pour number are no takt). Version 1 and 2 files are still read; they may not carry the version 3 keys.
   const TYPE = "arsten-client-summary", VERSION = 3;
-  const FOLDER = ["_ArstenDocs", "Client"];
+  // The project's tool folder is _AM_Docs (renamed from _ArstenDocs on 17.11.2026, one name for Arsten and Multiplan).
+  // Lookups take _AM_Docs first and fall back to an old _ArstenDocs; only _AM_Docs is ever created.
+  const DOCS = "_AM_Docs", DOCS_OLD = "_ArstenDocs";
+  const pickFolder = (list, name, same) => {
+    const eq = same || ((a, b) => a === b);
+    const isF = (x) => !!x && String(x.type || "").toUpperCase() === "FOLDER";
+    return (list || []).find((x) => isF(x) && eq(x.name, name)) || (name === DOCS ? (list || []).find((x) => isF(x) && eq(x.name, DOCS_OLD)) : undefined);
+  };
+  const FOLDER = [DOCS, "Client"];
   const NOTE_MAX = 2000;
   const STEP_IDS = S.STEPS.map((s) => s.id);
   const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -392,7 +400,7 @@
     let parent = p && p.rootId;
     if (!parent) return null;
     for (const name of names) {
-      const f = itemsOf(await core.req(`folders/${encodeURIComponent(parent)}/items`)).find((x) => String(x.type).toUpperCase() === "FOLDER" && x.name === name);
+      const f = pickFolder(itemsOf(await core.req(`folders/${encodeURIComponent(parent)}/items`)), name);
       if (!f) return null;
       parent = f.id;
     }

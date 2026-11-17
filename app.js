@@ -1,7 +1,7 @@
 // Project status: client view of construction progress in the Trimble Connect 3D viewer.
 // Live view: reads the statuses that Pour status (Arsten) stores in the project library "CIP/Монолитно" and the pour
 // objects of the Tekla model (property set Pour/Такт). Shows stages and dates only: no notes, no names.
-// Client summary (week 3, B-Client 1): admin / GC publish ONE client-safe JSON per day to _ArstenDocs/Client
+// Client summary (week 3, B-Client 1): admin / GC publish ONE client-safe JSON per day to _AM_Docs/Client
 // (client-summary.js; upload with shared/arsten-backup.js). The CLIENT role reads ONLY those files ("as published on
 // 14.11", picker over the files). Round 11 M1: with none published (or none readable) the client gets "Все още няма
 // публикуван отчет" and the panel never reads the library (no pset call at all for the client). Round 11 M2 / round 16 M2:
