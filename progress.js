@@ -168,5 +168,65 @@
     return min ? { min, max } : null;
   }
 
-  return { UNIT, fromPsets, recordAsOf, recordsAsOf, covered, coveredNa, coveredDate, overall, perPour, timeline, dateRange };
+  // ---------- reading the pour objects (sweep 18.11.2026) ----------
+  // Статус read every 200-object chunk one after the other; with only the architecture or steel model loaded (the proxy
+  // class filter finds nothing, so every object is read) that was ~150 serial viewer round trips (~9 s) before the live
+  // view, on every open and every model change. Same rules as Монолитен бетон's U.scanPours (viewer-pour-status/app.js);
+  // kept here because the synced common.js is Монолитен бетон's file - move both into common.js when that area is next
+  // touched. The sessionStorage key is the same one, so a model version found without pours by either panel is skipped.
+  /** sessionStorage key of "this model version has no Pour/Такт objects" (full-model scan skipped next time). */
+  const noPourKey = (projectId, modelId, ver) => `arsten.pourScan.v1.${projectId || "?"}.${modelId}@${ver}`;
+  /** items mapped n at a time; the results keep the order of items. */
+  async function poolMap(items, n, fn) {
+    const out = new Array(items.length);
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (next < items.length) { const k = next++; out[k] = await fn(items[k], k); } }));
+    return out;
+  }
+  /**
+   * Pour objects of the loaded models [{modelId, id, props, guid, bbox?}]: properties read `batch` at a time, `limit`
+   * chunks at once; per chunk the GUIDs (and, unless o.noBoxes, the boxes) side by side. Model / chunk order is kept.
+   * o.full (the class filter found nothing, every object is read): a model version known to have no pour objects
+   * (o.cache, by o.versions modelId -> versionId and the object count) is skipped; one scanned without pours is remembered.
+   * o: {batch, limit, mapLimit, full, versions: Map, cache: {get, set, drop}, projectId, noBoxes, onProgress(done, total)}
+   */
+  async function scanPours(api, modelObjs, readPset, o) {
+    o = o || {};
+    const batch = o.batch || 200, limit = o.limit || 4, mapLimit = o.mapLimit || poolMap;
+    const items = [];
+    let skipped = 0;
+    for (const m of modelObjs || []) {
+      const ids = (m.objects || []).map((x) => x.id);
+      if (!ids.length) continue;
+      const ver = o.versions && o.versions.get(m.modelId);
+      const key = o.full && ver && o.cache ? noPourKey(o.projectId, m.modelId, ver) : null;
+      if (key) { const c = o.cache.get(key); if (c && c.hasPours === false && c.n === ids.length) { skipped++; continue; } }
+      const chunks = [];
+      for (let i = 0; i < ids.length; i += batch) chunks.push(ids.slice(i, i + batch));
+      let read = 0;
+      const per = await mapLimit(chunks, limit, async (chunk) => {
+        const props = (await api.viewer.getObjectProperties(m.modelId, chunk)) || [];
+        const found = [];
+        for (const p of props) { const ps = p && readPset(p); if (ps) found.push({ modelId: m.modelId, id: p.id, props: ps }); }
+        if (found.length) {
+          const fid = found.map((f) => f.id);
+          const [boxes, guids] = await Promise.all([
+            o.noBoxes ? null : Promise.resolve().then(() => api.viewer.getObjectBoundingBoxes(m.modelId, fid)).catch(() => null),   // boxes are optional
+            api.viewer.convertToObjectIds(m.modelId, fid)]);
+          const byId = boxes ? new Map(boxes.map((b) => [b.id, b.boundingBox])) : null;
+          found.forEach((f, k) => { if (byId) f.bbox = byId.get(f.id) || null; f.guid = (guids || [])[k] || null; });
+        }
+        read += chunk.length;
+        if (o.onProgress) o.onProgress(read, ids.length);
+        return found.filter((f) => f.guid);
+      });
+      const got = [].concat(...per);
+      items.push(...got);
+      if (key) { if (got.length) o.cache.drop(key); else o.cache.set(key, { n: ids.length, hasPours: false }); }
+    }
+    items.skipped = skipped;
+    return items;
+  }
+
+  return { UNIT, fromPsets, recordAsOf, recordsAsOf, covered, coveredNa, coveredDate, overall, perPour, timeline, dateRange, noPourKey, poolMap, scanPours };
 });

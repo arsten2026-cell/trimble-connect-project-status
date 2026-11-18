@@ -42,24 +42,38 @@
     byVolume: ["кофраж и декофриране по m², армировка по kg, бетон по m³", "formwork and stripping by m², rebar by kg, concrete by m³"], poursDone: ["такта завършени", "pours complete"], poursDone1: ["такт завършен", "pour complete"],
     noEvents: ["Още няма отбелязани етапи.", "No stages recorded yet."],
     noLib: ["Статусите на тактовете още не са настроени в този проект.", "Pour statuses are not set up in this project yet."],
-    noPours: ["В заредените модели няма тактове (Tekla IFC с Pour/Такт).", "No pours in the loaded models (Tekla IFC with Pour/Такт)."],
     objects: ["обекта", "objects"], objects1: ["обект", "object"], poursWord1: ["такт", "pour"],
     poured: ["излято", "poured"], thisWeek: ["тази седмица", "this week"], poursWord: ["такта", "pours"],
     basedOn: ["Въз основа на", "Based on"], loadedModels: ["заредените модели", "the loaded models"], dataAsOf: ["данни към", "data as of"],
     clientNote: ["Бележка", "Note"],
     forClient: ["За клиента", "For the client"], asClient: ["Виж като клиент", "View as client"],
-    stageLbl: ["Етап (за „Въз основа на“)", "Stage (for \"Based on\")"], noteLbl: ["Бележка към клиента (закъснения, нови дати)", "Note to the client (delays, new dates)"],
+    // sweep 18.11.2026 (finding 7): plain label; the long list of what goes out is behind "Какво се публикува?"
+    stageLbl: ["Етап на строежа (вижда се в отчета)", "Construction stage (shown in the report)"], noteLbl: ["Бележка към клиента (закъснения, нови дати)", "Note to the client (delays, new dates)"],
     publish: ["Публикувай за клиента", "Publish for the client"], republish: ["Публикувай отново (днес)", "Publish again (today)"],
     lastPub: ["Последно публикувано", "Last published"], notPub: ["Още няма публикувано резюме.", "Nothing published yet."],
     noReport: ["Все още няма публикуван отчет.", "No report has been published yet."],
+    // sweep 18.11.2026 (finding 5): a failed read is not "nothing published"; the client gets a button to try again
+    loadFail: ["Отчетът не можа да се зареди – проверете интернета и натиснете „Опитай пак“.", "The report could not be loaded – check the internet and press \"Try again\"."],
+    retry: ["Опитай пак", "Try again"],
+    // sweep 18.11.2026 (finding 2): the last summary could not be read at publishing, so nothing can be compared with it
+    prevFail: ["Последното резюме не се прочете – не може да се сравни.", "The last summary could not be read – no comparison."],
     unverified: ["непроверен източник", "unverified source"],
-    pubWho: ["Публикува само администратор или ръководител изпълнение (02.1).", "Only an admin or the execution PM (02.1) publishes."],
-    dropped: ["пропуснати резюмета от лица извън 00_ADMIN / 02.1", "summaries skipped (uploaded by someone outside 00_ADMIN / 02.1)"],
+    // sweep 18.11.2026: role names in plain words; the group codes stay in the console and the diagnostics only
+    pubWho: ["Публикува администраторът или ръководителят изпълнение.", "The admin or the execution PM publishes."],
+    dropped: ["пропуснати резюмета (качени от някой без право да публикува)", "summaries skipped (uploaded by someone who may not publish)"],
     published: ["Както е публикувано на", "As published on"], latest: ["последно", "latest"],
-    rebarAcc: ["Арм. приета", "Rebar accepted"], pending: ["чака", "pending"],
+    rebarAcc: ["Арм. приета", "Rebar accepted"], rebarAccClient: ["Армировка приета", "Rebar accepted"],
+    // sweep 18.11.2026 (finding 6): the client look uses the printed report's words, not the site abbreviations or N/M
+    inProgress: ["в процес", "in progress"], pending: ["чака", "pending"],
     byType: ["По тип", "By type"], list: ["Списък", "List"], noType: ["Без тип", "No type"],
-    groupPoured: ["излети", "poured"], without: ["без", "n/a"],
-    pubHint: ["Публикува се само: количества по етапи, дати по тактове, „армировка приета“ да/не, общо за стоманата (изработено / доставено / монтирано), дейностите „за клиента“ (с до 6 снимки на запис), бележката и „въз основа на“. Без имена, марки, вътрешни бележки и история.",
+    // sweep 18.11.2026 (b): the word Монолитен бетон now uses for a step that does not apply (was "без" / "n/a")
+    groupPoured: ["излети", "poured"], without: ["не се прави", "not needed"],
+    // sweep 18.11.2026 (b): day / week steps beside the "Към дата" slider (one pixel is about a day on a phone)
+    dayBack: ["‹ ден", "‹ day"], dayFwd: ["ден ›", "day ›"], weekBack: ["‹ седмица", "‹ week"],
+    pubHint: ["Клиентът вижда само количества, дати и дейностите „за клиента“ – без имена и бележки.",
+      "The client sees only quantities, dates and activities marked for the client – no names or notes."],
+    pubWhat: ["Какво се публикува?", "What is published?"],
+    pubHintFull: ["Публикува се само: количества по етапи, дати по тактове, „армировка приета“ да/не, общо за стоманата (изработено / доставено / монтирано), дейностите „за клиента“ (с до 6 снимки на запис), бележката и „въз основа на“. Без имена, марки, вътрешни бележки и история.",
       "Published: quantities per stage, dates per pour, \"rebar accepted\" yes/no, steel totals (fabricated / delivered / erected), the activities marked \"for the client\" (with up to 6 photos each), the note and \"based on\". No names, marks, internal notes or history."],
     loose: ["Без номер на такт", "No pour number"], looseHint: ["не се броят като такт", "not counted as a pour"],
     print: ["Печат / PDF", "Print / PDF"], back: ["Назад", "Back"], week: ["Седмица", "Week"], month: ["Месец", "Month"],
@@ -69,11 +83,12 @@
     steelNA: ["Стоманата не е налична", "Steel not available"],
     steelOr: ["публикувай без нея или откажи.", "publish without it, or cancel."],
     steelHad: ["Последното публикувано резюме има стомана – клиентът ще спре да вижда стоманата.", "The last published summary has steel – the client will stop seeing the steel."],
-    steelDeniedHint: ["Публикувайте като член на 00_ADMIN или 02.1, за да е включена.", "Publish as a member of 00_ADMIN or 02.1 to include it."],
+    steelDeniedHint: ["Нека публикува администраторът или ръководителят изпълнение, за да е включена.", "Let the admin or the execution PM publish to include it."],
     steelRetryHint: ["Може да опитате пак след малко.", "You can try again in a moment."],
     steelGo: ["Публикувай без стоманата", "Publish without the steel"], steelCancel: ["Откажи", "Cancel"],
-    rsDenied: ["няма достъп до STEEL/Монтаж", "no access to STEEL/Монтаж"], rsTimeout: ["Connect не отговаря", "Connect did not answer"],
-    rsBusy: ["твърде много заявки (429)", "too many requests (429)"],
+    rsDenied: ["нямате достъп до данните за стоманата", "no access to the steel data"], rsTimeout: ["Connect не отговаря", "Connect did not answer"],
+    rsBusy: ["Connect е зает – опитайте след минута", "Connect is busy – try again in a minute"],
+    rsViewer: ["моделът не отговаря", "the model did not answer"],
     steelLeft: ["Без стомана – клиентът ще спре да вижда стоманата.", "No steel – the client will stop seeing the steel."],
     pubCancelled: ["Публикуването е отказано – нищо не е качено.", "Publishing cancelled – nothing was uploaded."],
     // round 16 (L4): "Виж като клиент" shows only what the client sees, plus this one control
@@ -83,8 +98,39 @@
     siteClientHint: ["Записи от последните 30 дни.", "Entries from the last 30 days."],
     sitePub: ["Дейности за клиента", "Activities for the client"], sitePhotos: ["снимки", "photos"],
     sitePhCopy: ["Копиране на снимките за клиента", "Copying the photos for the client"],
-    sitePhFailed: ["снимки не бяха копирани (вижте конзолата) – записите са публикувани без тях", "photos were not copied (see the console) – the entries went out without them"], siteWeek: ["в последните 7 дни", "in the last 7 days"],
+    sitePhFailed: ["снимки не се копираха – записите отидоха без тях; публикувайте отново по-късно", "photos were not copied – the entries went out without them; publish again later"], siteWeek: ["в последните 7 дни", "in the last 7 days"],
     siteReadFail: ["Дейностите не можаха да се прочетат – публикуване без тях?", "The activities could not be read – publish without them?"],
+    // sweep 18.11.2026: the publish question is a box in the panel (window.confirm can be blocked in Connect's frame)
+    pubGo: ["Публикувай", "Publish"], pubWithout: ["Публикувай без тях", "Publish without them"],
+    siteNew: ["Нови за клиента от последното публикуване", "New for the client since the last publish"], siteNoNew: ["Няма нови дейности от последното публикуване.", "No new activities since the last publish."],
+    siteMore: ["и още", "and"], siteMoreEnd: ["", "more"],
+    siteWho: ["Списъкът с дейности е качен последно от", "The activities list was last uploaded by"],
+    siteWhoOut: ["който не е администратор, ръководител или от екипа на изпълнителя. Да влязат ли тези дейности при клиента?", "who is not the admin, a PM or on the contractor's team. Should these activities go to the client?"],
+    // sweep 18.11.2026: the uploader could not be checked (no uploader in the listing, members not readable): asked too
+    siteWhoUnknown: ["Не можа да се провери кой е качил списъка с дейности. Да влязат ли тези дейности при клиента?", "Could not check who uploaded the activities list. Should these activities go to the client?"],
+    siteInclude: ["Включи дейностите", "Include the activities"], siteLeave: ["Без дейностите", "Without the activities"],
+    siteLeft: ["Без дейности (списъкът не е качен от екипа).", "No activities (the list was not uploaded by the team)."],
+    siteLeftUnknown: ["Без дейности (не можа да се провери кой е качил списъка).", "No activities (could not check who uploaded the list)."],
+    // (Статус has no Обнови button: opening the panel again reads the list again)
+    incomplete: ["списъкът с публикации може да е непълен – отворете панела отново", "the list of publications may be incomplete – open the panel again"],
+    // sweep 18.11.2026: photos added to an entry that went out before (the photos are not part of its date + text)
+    sitePhNew: ["Нови снимки към публикувани записи", "New photos on entries published before"],
+    // sweep 18.11.2026: publish progress and result as texts of the table (rebuilt after a language switch)
+    // sweep 18.11.2026 (b): the publish reads run together, so one progress text (they stepped through six before)
+    pubRead: ["Чета данните…", "Reading the data…"], pubPrep: ["Подготовка на резюмето…", "Preparing the summary…"],
+    // sweep 18.11.2026 (b): the publish question shows the whole text of each new entry and the photos going out
+    pubShowAll: ["Покажи всички", "Show all"], pubShowAllHint: ["Прегледайте всички записи преди публикуване.", "Review every entry before publishing."],
+    sitePhGoing: ["Снимки за клиента – отметнете тези, които не са за клиента:", "Photos for the client – tick the ones that are not for the client:"],
+    phNotClient: ["не за клиента", "not for the client"],
+    pubSaving: ["Качване на резюмето…", "Uploading the summary…"],
+    published2: ["Публикувано за клиента ✓", "Published for the client ✓"], pubPrint: ["Печат на седмичния отчет", "Print weekly report"],
+    pubNothing: ["Няма какво да се публикува: няма заредени тактове, стомана или дейности за клиента.", "Nothing to publish: no pours loaded, no steel and no activities for the client."],
+    concreteLeft: ["Няма заредени тактове – клиентът ще спре да вижда бетона. Заредете модела с тактовете, ако не е нарочно.", "No pours loaded – the client will stop seeing the concrete. Load the pour model unless this is intended."],
+    // sweep 18.11.2026 (finding 4): no pour objects in the loaded models is a valid state for staff (steel, activities)
+    noPoursHint: ["Няма заредени тактове.", "No pours loaded."],
+    // sweep 18.11.2026: "Запази изглед" asks for the name in the panel (window.prompt can be blocked in Connect's frame)
+    viewName: ["Име на изгледа", "View name"], viewSave: ["Запази", "Save"], viewCancel: ["Откажи", "Cancel"],
+    viewSaved: ["Изгледът „{n}“ е запазен. Споделяне: Изгледи → ⋮ → Редакция.", "View \"{n}\" saved. To share: Views → ⋮ → Edit."],
   };
   // plain stage names for the client look (A18)
   const PLAIN = {
@@ -105,6 +151,9 @@
   const fmtShort = (d) => { if (!d) return ""; if (I18N) return I18N.fmtDate(d, lang, { short: true }); const [y, m, dd] = d.split("-"); return `${dd}.${m}.${y.slice(2)}`; };
   const fmtNum = (v, dec) => Number(v || 0).toLocaleString(lang === "bg" ? "bg-BG" : "en-GB", { minimumFractionDigits: dec, maximumFractionDigits: dec });
   const decOf = (unit) => (unit === "kg" ? 0 : 1);
+  const pad2 = (n) => String(n).padStart(2, "0");
+  /** "YYYY-MM-DD" of a timestamp in the local time zone; the first 10 characters when it does not parse. */
+  const localDay = (d) => { const x = new Date(d); return isNaN(x) ? String(d).slice(0, 10) : `${x.getFullYear()}-${pad2(x.getMonth() + 1)}-${pad2(x.getDate())}`; };
   const toNum = (v) => { const n = typeof v === "number" ? v : parseFloat(String(v == null ? "" : v).replace(",", ".")); return isFinite(n) ? n : null; };
   // text may be a function: then it is built again in the new language after a language switch (round 19 L4)
   let statusAgain = null;
@@ -134,6 +183,11 @@
     caps: [],
     staffStatus: "",               // round 16: the staff status line, put back when leaving "Виж като клиент"
     steelAsk: null,                // round 16 M1: {error, had, resolve} while the publish box asks "publish without steel?"
+    pubAsk: null,                  // sweep 18.11.2026: {text, go, cancel, resolve} while the publish box asks a question
+    sumComplete: true,             // sweep 18.11.2026: false when the _AM_Docs/Client listing may be cut off
+    ready: false,                  // sweep 18.11.2026: the last load ran to the end (publishing may start)
+    pubDone: null,                 // sweep 18.11.2026: {day, failed} after a publish: success line + "Печат на седмичния отчет"
+    reportAny: false,              // sweep 18.11.2026: the print view of the summary just published, from the live view
     group: (() => { try { return localStorage.getItem(GROUP_KEY) || "type"; } catch { return "type"; } })(),
   };
   /** The panel's role from the access result: works with the single role (access.role) and with the role union
@@ -178,23 +232,26 @@
   const fetchFor = () => window.ARSTEN_FETCH || ((...a) => fetch(...a));
 
   // ---------- data (read-only) ----------
-  async function loadPours() {
+  // Sweep 18.11.2026: P.scanPours (4 chunks at once, GUIDs beside the properties, no boxes: Статус does not use them) and
+  // a sessionStorage marker for a model version read in full without pour objects, as Монолитен бетон does. Before, a
+  // stage with only the architecture or steel model loaded read every object one chunk after the other (~9 s) on every
+  // open and every model-set change, and staff waited for it before the live view.
+  const scanCache = {
+    get: (k) => { try { const st = window.sessionStorage; return st ? JSON.parse(st.getItem(k) || "null") : null; } catch { return null; } },
+    set: (k, v) => { try { const st = window.sessionStorage; if (st) st.setItem(k, JSON.stringify(v)); } catch {} },
+    drop: (k) => { try { const st = window.sessionStorage; if (st) st.removeItem(k); } catch {} },
+  };
+  /** specs: getModels("loaded") of this load (model versions for the scan cache); read here when not given. */
+  async function loadPours(specs) {
     const api = state.api;
     let modelObjs = await api.viewer.getObjects({ parameter: { class: PROXY } });
-    if (!(modelObjs || []).some((m) => (m.objects || []).length)) modelObjs = await api.viewer.getObjects();
-    const items = [];
-    for (const m of modelObjs || []) {
-      const ids = (m.objects || []).map((o) => o.id);
-      for (let i = 0; i < ids.length; i += BATCH) {
-        const props = (await api.viewer.getObjectProperties(m.modelId, ids.slice(i, i + BATCH))) || [];
-        const found = [];
-        for (const p of props) { const ps = C.readPourPset(p); if (ps) found.push({ modelId: m.modelId, id: p.id, props: ps }); }
-        if (!found.length) continue;
-        const guids = (await api.viewer.convertToObjectIds(m.modelId, found.map((f) => f.id))) || [];
-        found.forEach((f, k) => { f.guid = guids[k] || null; });
-        items.push(...found.filter((f) => f.guid));
-      }
-    }
+    let full = false;
+    if (!(modelObjs || []).some((m) => (m.objects || []).length)) { modelObjs = await api.viewer.getObjects(); full = true; }
+    if (full && !specs) specs = await loadedModels();
+    const versions = new Map();
+    for (const m of specs || []) if (m && m.versionId) { if (m.id != null) versions.set(m.id, m.versionId); versions.set(m.versionId, m.versionId); }
+    const items = await P.scanPours(api, modelObjs, C.readPourPset, { batch: BATCH, limit: 4, mapLimit: A.mapLimit, full, versions, cache: scanCache,
+      projectId: state.project && state.project.id, noBoxes: true });
     // round 14: objects with no pour number are no takt (as Монолитен бетон, which keeps them in state.loose): they are
     // not counted in "x / y такта", the per-pour table or the summary, and are ghosted like the rest of the model
     const { pours, unnumbered } = C.groupPours(items);
@@ -210,8 +267,9 @@
     const LK = window.ArstenLinks;
     const links = state.objects.map((o) => S.entityLink(o.guid));
     const legacy = state.objects.filter((o) => LK.hasLegacy(o.guid)).map((o) => LK.legacyLink(o.guid));
-    const got = await state.client.readMany(lib.id, S.DEF_ID, links);
-    const raw = legacy.length ? await state.client.readMany(lib.id, S.DEF_ID, legacy) : new Map();
+    // side by side, as Pour status (speed audit item 7; sweep 18.11.2026): one batch-get round trip less on every load
+    const [got, raw] = await Promise.all([state.client.readMany(lib.id, S.DEF_ID, links),
+      legacy.length ? state.client.readMany(lib.id, S.DEF_ID, legacy) : new Map()]);
     const all = P.fromPsets(got, raw);
     // keep only what clients may see (steps, "without", dates)
     state.records = P.recordsAsOf(all, "");
@@ -244,7 +302,11 @@
   async function loadAssemblies() {
     const api = state.api, chunks = [];
     let models = [];
-    try { models = (await api.viewer.getObjects({ parameter: { class: ASSEMBLY } })) || []; } catch {}
+    // sweep 18.11.2026: a viewer error (models still streaming in, after a model reset) is NOT "no steel model": it was
+    // swallowed, so publishing sent counts only without asking. It now fails the steel read (readSteel: one more try,
+    // then "publish without the steel / cancel"; the staff card: "Стоманата не е налична (моделът не отговаря)").
+    try { models = (await api.viewer.getObjects({ parameter: { class: ASSEMBLY } })) || []; }
+    catch (e) { const err = new Error("viewer getObjects: " + errText(e)); err.viewer = true; err.cause = e; throw err; }
     for (const m of models) {
       const ids = (m.objects || []).map((o) => o.id);
       for (let i = 0; i < ids.length; i += BATCH) chunks.push({ modelId: m.modelId, ids: ids.slice(i, i + BATCH) });
@@ -321,7 +383,9 @@
         const n = f && (f.revision || f.versionNumber || f.version);
         if (n != null && n !== "") row.version = "v" + n;
         const d = f && (f.modifiedOn || f.createdOn || f.uploadedOn);
-        if (d) row.date = String(d).slice(0, 10);
+        // the Bulgarian (local) day, not the UTC day of Core's ISO time: a model uploaded at 01:30 on 17.11 is 17.11
+        // (sweep 18.11.2026); this date also goes to the client summary (basedOn.models[].date)
+        if (d) row.date = localDay(d);
       } catch {}
       if (!row.version && m.versionId) row.version = String(m.versionId).slice(0, 8);
       return row;
@@ -343,6 +407,8 @@
     state.summaries = l.files;
     state.sumVerified = l.verified !== false;
     state.sumDropped = l.dropped || [];
+    state.sumComplete = l.complete !== false;
+    if (!state.sumComplete) console.warn("the listing of _AM_Docs/Client may be incomplete (paging)");
     if (state.sumDropped.length) console.warn("summary files dropped (uploader not in 00_ADMIN / 02.1):", state.sumDropped.join(", "));
     if (l.trustError) console.warn("summary uploaders not verified:", l.trustError);
     const live = new Set(l.files.map((f) => f.stamp));
@@ -382,6 +448,8 @@
       project: state.project, note: "", basedOn: { stage: state.stageName, models: state.models }, steel: state.steel });
   }
   const shown = () => (inSummary() ? sumOf(state.sumDay) : liveSummary());
+  /** The "Към дата" slider position: the index of state.asOf in state.days, the last day for today. */
+  const asOfIndex = () => (state.asOf ? Math.max(0, state.days.indexOf(state.asOf)) : Math.max(0, state.days.length - 1));
 
   // ---------- colours ----------
   const STAGES = S.STAGES;
@@ -395,9 +463,18 @@
     const byPour = new Map(sumOf(state.sumDay).pours.map((p) => [p.label, CS.pourRecord(p)]));
     return (o) => byPour.get(o.pour) || null;
   }
+  // Sweep 18.11.2026 (finding 4): setObjectState fires onModelStateChanged; a same-model event within OWN_MS of our own
+  // colouring is ours, so loadOnce does not repaint (which fired the event again: a repaint every 1.5 s with "Оцвети").
+  const OWN_MS = 5000;
+  let ownStateAt = 0;
   async function applyColours() {
+    ownStateAt = Date.now();
+    try { return await applyColours2(); } finally { ownStateAt = Date.now(); }
+  }
+  async function applyColours2() {
     const api = state.api;
-    if (!state.coloured) return api.viewer.setObjectState(undefined, { color: "reset", opacity: 1 });
+    // finding 4: no pour objects loaded: nothing to colour, so the rest of the model is not ghosted either
+    if (!state.coloured || !state.objects.length) return api.viewer.setObjectState(undefined, { color: "reset", opacity: 1 });
     await api.viewer.setObjectState(undefined, { color: GHOST, opacity: GHOST_OPACITY });   // everything that is not a pour
     const rec = recordOf();
     const buckets = STAGES.map(() => []);
@@ -418,8 +495,11 @@
   }
   // ---------- B-Client 4: printable report of the shown published summary ----------
   /** The print view: only from a published summary (the client view, or "Виж като клиент" for staff). */
+  // the report's summary: the one shown (client look), or the one just published (finding 10: "Печат на седмичния
+  // отчет" in the publish box, from the live view)
+  const reportSum = () => (inSummary() || state.reportAny ? sumOf(state.sumDay) : null);
   function renderReport() {
-    const open = state.report && inSummary() && !!RP;
+    const open = state.report && !!RP && !!reportSum();
     $("report").hidden = !open;
     $("app").classList.toggle("reporting", open);   // index.html: the panel is hidden behind the report while it is open
     if (!open) return;
@@ -429,7 +509,7 @@
     $("printHint").textContent = t("printHint");
     // round 17 L6: the report HTML (up to ~1 MB at 5 000 pours) is built again only when the summary, the language or
     // the period changed, not on every render while the print view is open
-    const sum = sumOf(state.sumDay);
+    const sum = reportSum();
     if (repBuilt.sum !== sum || repBuilt.lang !== lang || repBuilt.period !== state.period) {
       $("repBody").innerHTML = RP.html(sum, { lang, period: state.period, photoUrl: (id) => phUrls.get(id) || "" });
       repBuilt = { sum, lang, period: state.period };
@@ -437,7 +517,7 @@
   }
   let repBuilt = { sum: null, lang: "", period: "" };
   function openReport() {
-    if (!inSummary()) return;
+    if (!reportSum()) return;
     state.report = true;
     render();
     return printWhenReady();
@@ -445,10 +525,11 @@
   /** The photos of the report PERIOD: their URLs first (also those already being asked), then the images of the report
    *  as it is then (it may have been rebuilt meanwhile) loaded, at most 10 s, so they are in the print. */
   async function printWhenReady() {
-    const sum = sumOf(state.sumDay);
+    const sum = reportSum();
     if (sum && RP) {
       const from = RP.periodFrom(sum, state.period === "month" ? "month" : "week");
-      await loadPhotoUrls((sum.site || []).filter((x) => x.date > from && x.date <= sum.date).flatMap((x) => x.photos || []));
+      // URLs older than PH_MAX_AGE_MS are asked again: signed links expire in a panel left open for the weekly print
+      await loadPhotoUrls((sum.site || []).filter((x) => x.date > from && x.date <= sum.date).flatMap((x) => x.photos || []), { maxAgeMs: PH_MAX_AGE_MS });
     }
     render();
     const imgs = typeof document.querySelectorAll === "function" ? [...document.querySelectorAll("#repBody img")] : [];
@@ -473,6 +554,7 @@
     $("legend").innerHTML = STAGES.map((s, k) => `<span><span class="sw" style="background:${s.colour}${k === 0 ? `;opacity:${NOT_STARTED_OPACITY + 0.2}` : ""}"></span>${esc(stageName(s))}</span>`).join("")
       + `<span><span class="sw" style="background:${GHOST}"></span>${esc(t("other"))}</span>`;
     renderPublish();
+    renderViewAsk();
     // round 16: "Виж като клиент" shows the client's status line, not the staff counts
     if (state.asClient && isStaff() && summary) setStatus(() => `${t("published")} ${fmtDate(state.sumDay)}`);
     // published-summary picker ("както е публикувано на 14.11")
@@ -486,9 +568,15 @@
     const rng = $("rngAsOf");
     rng.max = String(Math.max(0, state.days.length - 1));
     rng.disabled = state.days.length < 2;
-    rng.value = String(state.asOf ? Math.max(0, state.days.indexOf(state.asOf)) : Math.max(0, state.days.length - 1));
+    rng.value = String(asOfIndex());
     $("asOfDate").textContent = fmtDate(state.asOf || S.today());
+    // sweep 18.11.2026 (b): a screen reader says the date, not the index; day / week steps for a phone
+    if (typeof rng.setAttribute === "function") rng.setAttribute("aria-valuetext", fmtDate(state.asOf || S.today()));
     $("btnToday").hidden = !state.asOf;
+    $("btnDayBack").textContent = t("dayBack"); $("btnDayFwd").textContent = t("dayFwd"); $("btnWeekBack").textContent = t("weekBack");
+    const idx = asOfIndex();
+    $("btnDayBack").disabled = $("btnWeekBack").disabled = rng.disabled || idx <= 0;
+    $("btnDayFwd").disabled = rng.disabled || idx >= state.days.length - 1;
 
     const sum = shown();
     // headline (A18)
@@ -516,32 +604,38 @@
     // details: the four bars, each in its unit
     $("overall").innerHTML = S.STEPS.map((st) => {
       const s = sum.totals[st.id];
-      return `<div class="stat"><div class="hd"><b>${esc(stageName(st))}</b><span class="num">${fmtNum(s.pct * 100, 0)}%${s.unit ? ` · ${fmtNum(s.qty, decOf(s.unit))} / ${fmtNum(s.total, decOf(s.unit))} ${s.unit}` : ""}</span></div>
+      return `<div class="stat"><div class="hd"><b>${esc(stageName(st))}</b><span class="num">${fmtNum(s.pct * 100, 0)}%${s.unit ? ` · ${fmtNum(s.qty, decOf(s.unit))} / ${fmtNum(s.total, decOf(s.unit))} ${esc(s.unit)}` : ""}</span></div>
         <div class="track"><div class="fill" style="width:${Math.min(100, s.pct * 100).toFixed(1)}%;background:${st.colour}"></div></div>
         <div class="sub">${s.pours} / ${sum.counts.pours} ${esc(tn(sum.counts.pours, "poursDone"))}</div></div>`;
     }).join("") + `<div class="note">${esc(t("byVolume"))}${clientLook() ? "" : ` · ${sum.counts.objects} ${esc(tn(sum.counts.objects, "objects"))}`}</div>`;
     // per pour (B-Client 3: rebar accepted; B-Client 7: by type)
     const acc = sum.pours.some((p) => p.rebar !== null);
-    const short = lang === "bg" ? ["Кофраж", "Арм.", "Излят", "Декофр."] : ["Formwork", "Rebar", "Poured", "Stripped"];
+    // sweep 18.11.2026 (finding 6): the client look uses the printed report's words (report.js PLAIN, "Бетон" for the
+    // narrow column) so the phone and the paper say the same; staff keep the short site words
+    const cl = clientLook();
+    const short = cl ? (lang === "bg" ? ["Кофраж", "Армировка", "Бетон", "Завършен"] : ["Formwork", "Reinforcement", "Concrete", "Finished"])
+      : lang === "bg" ? ["Кофраж", "Арм.", "Излят", "Декофр."] : ["Formwork", "Rebar", "Poured", "Stripped"];
     const cols = 1 + short.length + (acc ? 1 : 0);
-    $("pourHead").innerHTML = `<tr><th>${esc(t("pour"))}</th>${short.map((x) => `<th class="c">${x}</th>`).join("")}${acc ? `<th class="c">${esc(t("rebarAcc"))}</th>` : ""}</tr>`;
+    $("pourHead").innerHTML = `<tr><th>${esc(t("pour"))}</th>${short.map((x) => `<th class="c">${x}</th>`).join("")}${acc ? `<th class="c">${esc(t(cl ? "rebarAccClient" : "rebarAcc"))}</th>` : ""}</tr>`;
     const row = (p) => `<tr><td><span class="name">${esc(p.label)}</span>${clientLook() ? "" : ` <span class="sub">${p.objects}</span>`}</td>${S.STEPS.map((st) => {
       const c = p.steps[st.id];
       if (CS.allNa(p, st.id)) return `<td class="c done" title="${esc(fmtDate(c.date))}">${esc(t("without"))}</td>`;   // the stage does not apply
       if (CS.isComplete(p, st.id)) return `<td class="c done" title="${esc(fmtDate(c.date))}">${esc(fmtShort(c.date)) || "✓"}</td>`;
-      if (c.done) return `<td class="c part">${c.done}/${p.objects}</td>`;
+      if (c.done) return cl ? `<td class="c part">${esc(t("inProgress"))}</td>` : `<td class="c part">${c.done}/${p.objects}</td>`;   // N/M counts model objects: staff only
       return `<td class="c none">–</td>`;
     }).join("")}${acc ? `<td class="c ${p.rebar === "yes" ? "ok" : p.rebar === "pending" ? "part" : "none"}">${p.rebar === "yes" ? "✓" : p.rebar === "pending" ? esc(t("pending")) : "–"}</td>` : ""}</tr>`;
     if (state.group === "type") {
       $("pourRows").innerHTML = CS.groupByType(sum.pours).map((g) => `<tr class="grp"><td colspan="${cols}">${esc(CS.typeName(g.type, lang) || t("noType"))}
         <span class="sub">· ${g.pours.length} ${esc(tn(g.pours.length, "poursWord"))} · ${esc(t("groupPoured"))} ${g.poured}</span></td></tr>` + g.pours.map(row).join("")).join("");
     } else $("pourRows").innerHTML = sum.pours.map(row).join("");
+    // finding 4: staff with no pour objects loaded see why the table is empty
+    if (!summary && !sum.pours.length && !clientLook()) $("pourRows").innerHTML = `<tr><td colspan="${cols}" class="sub">${esc(t("noPoursHint"))}</td></tr>`;
     // timeline
     const stepById = Object.fromEntries(S.STEPS.map((s) => [s.id, s]));
     const tl = summary ? CS.timelineOf(sum) : P.timeline(state.objects, currentRecords());
     const list = state.showAll ? tl : tl.slice(0, 30);
     $("timeline").innerHTML = list.length ? list.map((e) => {
-      const extra = summary ? "" : [clientLook() ? "" : `${e.count} ${esc(tn(e.count, "objects"))}`, e.qty >= 0.05 ? `${fmtNum(e.qty, decOf(e.unit))} ${e.unit}` : ""].filter(Boolean).join(" · ");
+      const extra = summary ? "" : [clientLook() ? "" : `${e.count} ${esc(tn(e.count, "objects"))}`, e.qty >= 0.05 ? `${fmtNum(e.qty, decOf(e.unit))} ${esc(e.unit)}` : ""].filter(Boolean).join(" · ");
       return `<li><span class="d">${esc(fmtDate(e.date))}</span><span class="dot" style="background:${stepById[e.step].colour}"></span>
       <span><b>${esc(e.pour)}</b> · ${esc(stageName(stepById[e.step]))}${extra ? `<br><span class="sub">${extra}</span>` : ""}</span></li>`;
     }).join("") : `<li class="sub">${esc(t("noEvents"))}</li>`;
@@ -553,43 +647,166 @@
   // ---------- Дейности for the client (shared/arsten-activities.js; entered in the Дейности panel) ----------
   const SITE_CLIENT_DAYS = 30;
   /** Client look only: the published summary's activities of the last 30 days, read-only. Staff edit them in Дейности. */
+  // Sweep 18.11.2026 (b, speed): every URL of the 30 days was asked (4 at a time) and the list re-rendered only when ALL
+  // had come, so the client read the texts with no photo for ~3 s on a phone (40 photos = 10 rounds), photos far down
+  // asked first. A tile whose URL is not known yet is now a placeholder (same size: the layout does not jump); the
+  // placeholders in view (+300 px, IntersectionObserver as Авторски надзор) are asked first, and each URL that comes
+  // shows its tile (one render per 100 ms). Without IntersectionObserver every pending tile is queued. Only the print
+  // (printWhenReady) still waits for all the URLs of its period.
   function renderSite(sum) {
     const rows = clientLook() && sum && sum.site ? sum.site.filter((x) => x.date > CS.addDays(sum.date, -SITE_CLIENT_DAYS)) : [];
     $("hSite").hidden = !rows.length; $("siteBox").hidden = !rows.length;
-    if (!rows.length) return;
+    if (!rows.length) { wantTiles(null); return; }
     $("hSite").textContent = t("site");
     $("siteHint").textContent = t("siteClientHint");
     $("siteList").innerHTML = rows.map((x) => `<li><span class="d">${esc(fmtDate(x.date))}</span><span class="txt">${esc(x.text)}${phThumbs(x)}</span></li>`).join("");
-    loadPhotoUrls(rows.flatMap((x) => x.photos || []));
+    wantTiles(rows.flatMap((x) => (x.photos || []).map((id, i) => tileId(x, i))).filter((id) => !phUrls.has(id) && !phPending.has(id)));
   }
-  // photos of the published entries (client copies in _AM_Docs/Client/Photos): id -> download URL ("" failed, undefined loading)
+  // photos of the published entries (client copies in _AM_Docs/Client/Photos): id -> download URL ("" failed or not
+  // shown, undefined loading)
   const phUrls = new Map();
-  const phThumbs = (x) => {
-    const ids = (x.photos || []).filter((id) => phUrls.get(id));
-    return ids.length ? `<span class="ph">${ids.map((id) => `<img src="${esc(phUrls.get(id))}" alt="" loading="lazy" data-ph="${esc(id)}">`).join("")}</span>` : "";
+  // Sweep 18.11.2026: a tile shows the THUMBNAIL (x.thumbs[i], the client copy made at publish) - on a phone the list
+  // loaded one 2560 px JPEG per tile. A tap opens the full photo (data-ph). A thumbnail whose URL failed, or whose image
+  // did not load even with a fresh URL, falls back to the photo (thFailed). Summaries before thumbs show the photos.
+  const thFailed = new Set();
+  const tileId = (x, i) => {
+    const id = x.photos[i], th = Array.isArray(x.thumbs) ? x.thumbs[i] : "";
+    return th && typeof th === "string" && !thFailed.has(th) && phUrls.get(th) !== "" ? th : id;
   };
-  const phPending = new Map();   // id -> promise while its URL is being asked (audit: a print waits for those too)
-  /** Ask Connect for the download URLs of these photos (4 at a time, each once); re-render when they arrive. Resolves
-   *  when every one of them is known, also those an earlier call is still asking for. */
-  async function loadPhotoUrls(ids) {
-    const all = [...new Set(ids)];
-    const want = all.filter((id) => !phUrls.has(id));
-    if (AV && want.length) {
-      for (const id of want) phUrls.set(id, undefined);
-      let i = 0;
-      const next = async () => { while (i < want.length) { const id = want[i++]; try { phUrls.set(id, (await AV.photoUrl(coreFor(), id)) || ""); } catch (e) { console.warn("photo url", e); phUrls.set(id, ""); } } };
-      const batch = Promise.all([next(), next(), next(), next()]).then(() => {
-        for (const id of want) phPending.delete(id);
-        repBuilt = { sum: null, lang: "", period: "" };   // the report is built again with the photos
-        render();
-      });
-      for (const id of want) phPending.set(id, batch);
+  const phThumbs = (x) => {
+    const tiles = (x.photos || []).map((id, i) => ({ id, src: tileId(x, i) })).filter((p) => phUrls.get(p.src) !== "");
+    return tiles.length ? `<span class="ph">${tiles.map((p) => (phUrls.get(p.src)
+      ? `<img src="${esc(phUrls.get(p.src))}" alt="" loading="lazy" data-ph="${esc(p.id)}"${p.src !== p.id ? ` data-th="${esc(p.src)}"` : ""}>`
+      : `<span class="ph-wait" data-want="${esc(p.src)}"></span>`)).join("")}</span>` : "";
+  };
+  let phIo = null;
+  /** Ask the URLs of these pending tiles: the ones in view first (IntersectionObserver), else all of them in order. */
+  function wantTiles(ids) {
+    if (phIo) { phIo.disconnect(); phIo = null; }
+    if (!ids || !ids.length) return;
+    const box = $("siteList");
+    if (typeof IntersectionObserver === "function" && box && typeof box.querySelectorAll === "function") {
+      phIo = new IntersectionObserver((entries) => {
+        const vis = entries.filter((e) => e.isIntersecting).map((e) => { phIo.unobserve(e.target); return e.target.dataset && e.target.dataset.want; }).filter(Boolean);
+        if (vis.length) loadPhotoUrls(vis, { front: true });
+      }, { rootMargin: "300px" });
+      box.querySelectorAll("[data-want]").forEach((n) => phIo.observe(n));
+      return;
     }
-    await Promise.all([...new Set(all.map((id) => phPending.get(id)).filter(Boolean))]);
+    loadPhotoUrls(ids);
+  }
+  const phPending = new Map();   // id -> promise while its URL is being asked (audit: a print waits for those too)
+  // Sweep 18.11.2026: signed download URLs expire. phAt: id -> when its URL was asked; the print asks again for URLs
+  // older than PH_MAX_AGE_MS. An image that fails to load: see photoFailed.
+  const phAt = new Map();
+  const PH_MAX_AGE_MS = 30 * 60000, PH_POOL = 4;
+  // one pool for every URL (4 at a time): the tiles that come into view go to the front of the queue
+  const phQueue = [];
+  let phActive = 0, phRenderTimer = null;
+  /** One render per 100 ms while URLs come in (the report is built again with the photos). */
+  function softRender() {
+    repBuilt = { sum: null, lang: "", period: "" };
+    if (phRenderTimer) return;
+    phRenderTimer = setTimeout(() => { phRenderTimer = null; render(); }, 100);
+  }
+  function pumpPhotos() {
+    while (phActive < PH_POOL && phQueue.length) {
+      const job = phQueue.shift();
+      phActive++;
+      (async () => {
+        let u = "";
+        try { u = (await photoUrlChecked(job.id)) || ""; } catch (e) { console.warn("photo url", e); }
+        phUrls.set(job.id, u); phAt.set(job.id, Date.now());
+        phPending.delete(job.id);
+        phActive--;
+        job.done();
+        softRender();
+        pumpPhotos();
+      })();
+    }
+  }
+  /** Ask Connect for the download URLs of these photos (PH_POOL at a time, each once); each one shows its tile when it
+   *  comes. Resolves when every one of them is known, also those an earlier call is still asking for. opts.maxAgeMs:
+   *  also ask again for URLs (or failures) asked longer ago than that; opts.front: ahead of the queue (tiles in view). */
+  async function loadPhotoUrls(ids, opts) {
+    const all = [...new Set(ids)];
+    const maxAge = opts && opts.maxAgeMs;
+    if (maxAge) for (const id of all) if (phUrls.get(id) !== undefined && phUrls.has(id) && !phPending.has(id) && Date.now() - (phAt.get(id) || 0) > maxAge) phUrls.delete(id);
+    const want = all.filter((id) => !phUrls.has(id) && !phPending.has(id));
+    if (AV && want.length) {
+      const jobs = want.map((id) => {
+        phUrls.set(id, undefined);
+        let done = null;
+        phPending.set(id, new Promise((r) => { done = r; }));
+        return { id, done };
+      });
+      if (opts && opts.front) phQueue.unshift(...jobs); else phQueue.push(...jobs);
+      pumpPhotos();
+    }
+    await Promise.all(all.map((id) => phPending.get(id)).filter(Boolean));
+  }
+  // ---- sweep 18.11.2026 (b, security): who uploaded the client photo shown ----
+  // The summary is taken only from a trusted uploader, but its photo ids were opened as they are: files/fs/{id}/
+  // downloadurl serves the LATEST version, so anyone with write on _AM_Docs/Client (by default every project member,
+  // until the folder rights of AM_TEMPLATE are set) could upload a new version of a client photo and the client's
+  // Статус and printed report showed it under the PM's entry. The current version's uploader is now read with the URL
+  // (files/{id}, side by side) and must be a publisher (00_ADMIN / 02.1 / project ADMIN: the summaries' list, from the
+  // same trust cache); a photo by anyone else is not shown. Uploader or list not readable: shown (unverified, as the
+  // summaries). Pinning the exact version needs copyForClient (shared) to return it: see README.
+  let phTrustP = null;
+  const phTrusted = () => {
+    const pid = state.project && state.project.id;
+    const hit = pid ? trustCache.get(pid) : null;
+    if (hit) return Promise.resolve(hit);
+    if (!phTrustP) phTrustP = CS.trustedUploaders(coreFor(), pid).then((list) => { trustCache.set(pid, list); return list; },
+      (e) => { console.warn("client photos: publishers not read - photos shown unverified", e); phTrustP = null; return null; });
+    return phTrustP;
+  };
+  async function photoUrlChecked(id) {
+    const c = coreFor();
+    const meta = c.req(`files/${encodeURIComponent(id)}`).catch((e) => { if (!(e && e.status === 404)) console.warn("client photo: uploader not read", id, e); return null; });
+    const [u, f] = await Promise.all([AV.photoUrl(c, id), meta]);
+    if (!u || !f || !CS.uploaderOf(f)) return u;
+    const ok = CS.uploadedByTrusted(f, await phTrusted());
+    if (ok === false) { console.warn("client photo not shown: its current version was not uploaded by a publisher", id); return ""; }
+    return u;
   }
   document.addEventListener && document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("phView").hidden) $("phView").onclick(); });
-  $("siteList").onclick = (e) => { const im = e.target; const id = im && im.dataset && im.dataset.ph; if (id && phUrls.get(id)) { $("phViewImg").src = phUrls.get(id); $("phView").hidden = false; } };
+  // the tile may show the thumbnail: the full photo's URL is asked on the first tap (once), then it opens
+  $("siteList").onclick = async (e) => {
+    const im = e.target; const id = im && im.dataset && im.dataset.ph;
+    if (!id) return;
+    if (!phUrls.has(id) || phPending.has(id)) await loadPhotoUrls([id], { front: true });
+    if (phUrls.get(id)) { $("phViewImg").src = phUrls.get(id); $("phView").hidden = false; }
+  };
   $("phView").onclick = () => { $("phView").hidden = true; $("phViewImg").src = ""; };
+  /**
+   * An image (thumbnail or print) that did not load: its signed URL has probably expired, so a fresh one is asked.
+   * Sweep 18.11.2026 (b): the rule of Дейности (viewer-activities imgFailed). phRetried was a Set for the whole session:
+   * after the second expiry (Статус left open in the combined panel) a thumbnail switched to the 2560 px photo for good
+   * and a photo stayed a broken image. Now the time of the last fresh URL is kept; one older than PH_RETRY_MS is asked
+   * again, and only a failure of a URL fetched less than PH_RETRY_MS ago makes a thumbnail fall back to the photo, or a
+   * photo show nothing.
+   */
+  const PH_RETRY_MS = 10 * 60000;
+  const retriedAt = new Map();   // file id -> Date.now() of the last fresh URL asked after a failure
+  function photoFailed(im) {
+    if (!im || String(im.tagName || "").toUpperCase() !== "IMG") return;
+    const src = (typeof im.getAttribute === "function" && im.getAttribute("src")) || im.src || "";
+    const th = im.dataset && im.dataset.th;
+    const id = th || (im.dataset && im.dataset.ph) || [...phUrls].find(([, u]) => u && u === src)?.[0];   // the print has no data-ph
+    if (!id || phPending.has(id)) return;
+    const last = retriedAt.get(id);
+    if (last == null || Date.now() - last > PH_RETRY_MS) { retriedAt.set(id, Date.now()); phUrls.delete(id); loadPhotoUrls([id], { front: true }); return; }
+    if (th) { thFailed.add(th); render(); return; }   // a fresh thumbnail URL failed too: show the photo (render asks it)
+    phUrls.set(id, ""); render();                     // a fresh photo URL failed too: no tile rather than a broken image
+  }
+  /** "Опитай пак" / a forced load: every photo gets its fresh-URL try again. */
+  const resetPhotoTries = () => { retriedAt.clear(); thFailed.clear(); };
+  for (const box of ["siteList", "repBody"]) {
+    const b = $(box);
+    if (b && typeof b.addEventListener === "function") b.addEventListener("error", (e) => photoFailed(e.target), true);   // error does not bubble: capture
+  }
   function renderPublish() {
     // the box ("Виж като клиент") for admin / GC; the publish form only for admin / PM (L8). Round 16: in "Виж като
     // клиент" the box is hidden too (the client has none); only "Изход от изгледа като клиент" stays.
@@ -598,6 +815,7 @@
     $("leaveBar").hidden = !(isStaff() && state.asClient);
     $("btnLeaveClient").textContent = t("leaveClient");
     renderSteelAsk();
+    renderPubAsk();
     if (!show) { $("pubForm").hidden = true; $("pubWho").hidden = true; return; }
     $("hPub").textContent = t("forClient");
     $("lblAsClient").textContent = t("asClient");
@@ -611,15 +829,21 @@
     if (!$("inStage").value && state.stageName) $("inStage").value = state.stageName;
     const today = S.today(), done = state.summaries.some((f) => f.day === today);
     $("btnPublish").textContent = done ? t("republish") : t("publish");
-    $("btnPublish").disabled = !state.objects.length || !state.lib;
+    // finding 4 (sweep 18.11.2026): no pour objects / no pour library is no reason to block publishing (steel, activities)
+    $("btnPublish").disabled = publishing || !pubReady();
+    const pd = state.pubDone;
+    $("pubDone").hidden = !pd || !RP || !sumFile(pd.day);
+    if (pd) { $("pubDoneText").textContent = `${t("published2")} (${fmtDate(pd.day)})`; $("btnPubPrint").textContent = t("pubPrint"); }
     $("pubInfo").textContent = (state.summaries.length ? `${t("lastPub")}: ${fmtDate(state.summaries[0].day)}${unverifiedMark()}` : t("notPub"))
-      + (state.sumDropped.length ? ` · ${state.sumDropped.length} ${t("dropped")}` : "");
+      + (state.sumDropped.length ? ` · ${state.sumDropped.length} ${t("dropped")}` : "")
+      + (state.sumComplete ? "" : ` · ⚠ ${t("incomplete")}`);
     $("pubHint").textContent = t("pubHint");
+    $("pubWhatSum").textContent = t("pubWhat"); $("pubWhatText").textContent = t("pubHintFull");
   }
 
   // ---------- round 16 M1: the steel read at publishing time ----------
   const STEEL_RETRY_MS = 1500;
-  const transient = (e) => !!e && (e.timeout === true || e.status === 429 || e.status === 503);
+  const transient = (e) => !!e && (e.timeout === true || e.status === 429 || e.status === 503 || e.viewer === true);
   /** The steel totals for publishing: {steel} (null = no steel library) or {error}. A 429, 503 or timeout is tried once
    *  more (after psetapi's own retries) before it counts as an error. */
   async function readSteel() {
@@ -640,15 +864,27 @@
   function steelReason(e) {
     if (e && (e.steelDenied || e.status === 403)) return t("rsDenied");
     if (e && e.timeout) return t("rsTimeout");
+    if (e && e.viewer) return t("rsViewer");
     if (e && e.status === 429) return t("rsBusy");
     return errText(e).slice(0, 160);
   }
-  /** The newest published summary (from the cache of its version, else read once); null when none or not readable. */
+  /** The newest published summary: {sum} (sum null = none published) or {error} (could not be read). Sweep 18.11.2026
+   *  (finding 2): a failed read returned null like "nothing published", so the publish question dropped "the client's
+   *  steel / concrete will disappear". A failed list or file read is tried once more; still failing is {error}. */
   async function latestPublished() {
-    const f = state.summaries[0];
-    if (!f) return null;
-    if (!state.sums.has(f.stamp)) { try { state.sums.set(f.stamp, await CS.readSummary(coreFor(), f.id, fetchFor())); } catch { return null; } }
-    return state.sums.get(f.stamp) || null;
+    for (let n = 0; ; n++) {
+      try {
+        if (state.sumErr) { await refreshSummaries(); state.sumErr = null; }   // the listing failed at load: "none" is not sure
+        const f = state.summaries[0];
+        if (!f) return { sum: null };
+        if (!state.sums.has(f.stamp)) state.sums.set(f.stamp, await CS.readSummary(coreFor(), f.id, fetchFor()));
+        return { sum: state.sums.get(f.stamp) || null };
+      } catch (e) {
+        if (n === 0) { console.warn("last summary not read, trying once more", e); await new Promise((r) => setTimeout(r, window.ARSTEN_DEMO ? 0 : STEEL_RETRY_MS)); continue; }
+        console.warn("last summary not read: no comparison", e);
+        return { error: e };
+      }
+    }
   }
   /** The inline question in the publish box: resolves true ("publish without the steel") or false ("cancel"). */
   function askSteel(error, had) {
@@ -660,6 +896,72 @@
     $("steelAsk").hidden = true;
     if (a) a.resolve(ok);
   }
+  /** Sweep 18.11.2026: a question in the publish box (two buttons) instead of window.confirm, which Connect's frame or
+   *  the mobile webview can block: confirm() then returns false at once and the publish ended with no message.
+   *  Sweep 18.11.2026 (b): opts.full = the lines with every new entry (lines then holds the first SITE_SHOW_MAX and
+   *  "… и още N"): "Покажи всички" must be pressed before the first button works. opts.photos [{id, th}] = the photos
+   *  going out, shown as thumbnails with "не за клиента" per photo; the ticked ids are put in opts.drop (a Set). */
+  function askPub(lines, go, cancel, opts) {
+    if (state.pubAsk) answerPub(false);
+    const o = opts || {};
+    const join = (l) => l.filter((x) => x != null && x !== "").join("\n");
+    return new Promise((resolve) => {
+      const a = { text: join(lines), go, cancel, resolve, textAll: o.full ? join(o.full) : "", expanded: !o.full,
+        photos: o.photos || [], drop: o.drop || new Set(), urls: new Map() };
+      state.pubAsk = a;
+      renderPublish();
+      askPhotoUrls(a);
+    });
+  }
+  function answerPub(ok) {
+    const a = state.pubAsk;
+    if (ok && a && !a.expanded) return;   // "Покажи всички" first: nothing goes out unseen
+    state.pubAsk = null;
+    $("pubAsk").hidden = true;
+    if (a) a.resolve(ok);
+  }
+  /** The thumbnails of the photos in the publish question, 4 at a time (staff read the Дейности source files). */
+  function askPhotoUrls(a) {
+    if (!AV || !a.photos.length) return;
+    let i = 0;
+    const next = async () => {
+      while (i < a.photos.length && state.pubAsk === a) {
+        const p = a.photos[i++];
+        let u = "";
+        try { u = (await AV.photoUrl(coreFor(), p.th || p.id)) || ""; } catch (e) { console.warn("photo url (publish question)", e); }
+        a.urls.set(p.id, u);
+        if (state.pubAsk === a) renderAskPhotos(a);
+      }
+    };
+    Promise.all([next(), next(), next(), next()]).catch(() => {});
+  }
+  function renderAskPhotos(a) {
+    const box = $("pubAskPhotos");
+    box.hidden = !a.photos.length;
+    if (!a.photos.length) { box.innerHTML = ""; return; }
+    box.innerHTML = `<div class="sub">${esc(t("sitePhGoing"))}</div>` + a.photos.map((p) => {
+      const u = a.urls.get(p.id), off = a.drop.has(p.id);
+      return `<label${off ? ' class="drop"' : ""}>${u ? `<img src="${esc(u)}" alt="">` : '<span class="ph-wait"></span>'}<span><input type="checkbox" data-drop="${esc(p.id)}"${off ? " checked" : ""}> ${esc(t("phNotClient"))}</span></label>`;
+    }).join("");
+  }
+  $("pubAskPhotos").onchange = (e) => {
+    const a = state.pubAsk, n = e && e.target, id = n && n.dataset && n.dataset.drop;
+    if (!a || !id) return;
+    if (n.checked) a.drop.add(id); else a.drop.delete(id);
+    renderAskPhotos(a);
+  };
+  $("btnPubAll").onclick = () => { const a = state.pubAsk; if (!a) return; a.expanded = true; renderPubAsk(); };
+  function renderPubAsk() {
+    const a = state.pubAsk;
+    $("pubAsk").hidden = !a;
+    if (!a) return;
+    $("pubAskText").textContent = a.expanded && a.textAll ? a.textAll : a.text;
+    $("pubAllBar").hidden = a.expanded;
+    $("btnPubAll").textContent = t("pubShowAll"); $("pubAllHint").textContent = t("pubShowAllHint");
+    $("btnPubGo").disabled = !a.expanded;
+    $("btnPubGo").textContent = t(a.go); $("btnPubCancel").textContent = t(a.cancel);
+    renderAskPhotos(a);
+  }
   function renderSteelAsk() {
     const a = state.steelAsk;
     $("steelAsk").hidden = !a;
@@ -669,50 +971,173 @@
     $("btnSteelGo").textContent = t("steelGo"); $("btnSteelCancel").textContent = t("steelCancel");
   }
 
+  // ---------- sweep 18.11.2026: the activities going out, shown before publishing ----------
+  const SITE_SHOW_MAX = 20;
+  /** "• 17.11.2026 – text (снимки: 2)" per entry of out not in the summary prev (same date and text); all when prev is null. */
+  function siteLines(out, prev) { return siteChanges(out, prev).fresh; }
+  /**
+   * What goes to the client that it did not get with prev (the last published summary): fresh = lines of the entries
+   * whose date + full text were not in prev; photos = lines of the entries that were, but now carry more photos than
+   * prev did ("• 12.11.2026 – text (+3 снимки)"). Sweep 18.11.2026: the key was date + text only, so 3 photos added
+   * to an entry published last week went to _AM_Docs/Client/Photos with "Няма нови дейности" in the question. prev
+   * holds the ids of the CLIENT copies, not the source ids, so the photo count per entry is compared (a copy that failed
+   * last time is shown again here: shown once too often, never once too few).
+   * Sweep 18.11.2026 (b): the text was cut to 80 characters, but up to 200 go out: a remark after the first 80 (a name,
+   * a defect) reached the client unseen. Each line now carries the whole cleaned text (wrapped by the box). fresh /
+   * photos hold the first SITE_SHOW_MAX lines and "… и още N"; freshAll / photosAll every line ("Покажи всички").
+   * newPhotos: the photos of the new and grown entries [{id, th}] (source ids; th its thumbnail), for the thumbnails and
+   * "не за клиента". The key stays date + text: the summary has no entry ids, and an entry whose text was edited after
+   * the last publish has a new key, so it is listed again.
+   */
+  function siteChanges(out, prev) {
+    const had = new Map();
+    for (const x of (prev && prev.site) || []) { const k = x.date + "|" + x.text; had.set(k, Math.max(had.get(k) || 0, (x.photos || []).length)); }
+    const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
+    const nOf = (x) => (x.src || x.photos || []).length;
+    const fresh = [], grown = [];
+    for (const x of out || []) {
+      const k = x.date + "|" + x.text;
+      if (!had.has(k)) fresh.push(x);
+      else if (nOf(x) > had.get(k)) grown.push({ x, add: nOf(x) - had.get(k) });
+    }
+    const more = (n) => `… ${t("siteMore")} ${n} ${t("siteMoreEnd")}`.trim();
+    const short = (all) => (all.length > SITE_SHOW_MAX ? all.slice(0, SITE_SHOW_MAX).concat([more(all.length - SITE_SHOW_MAX)]) : all);
+    const freshAll = fresh.map((x) => `• ${fmtDate(x.date)} – ${clean(x.text)}${nOf(x) ? ` (${t("sitePhotos")}: ${nOf(x)})` : ""}`);
+    const photosAll = grown.map((g) => `• ${fmtDate(g.x.date)} – ${clean(g.x.text)} (+${g.add} ${t("sitePhotos")})`);
+    const newPhotos = [];
+    for (const x of fresh.concat(grown.map((g) => g.x))) for (const p of x.src || []) if (p && p.id && !newPhotos.some((q) => q.id === p.id)) newPhotos.push({ id: p.id, th: p.thumbId || "" });
+    return { fresh: short(freshAll), photos: short(photosAll), freshAll, photosAll, newPhotos };
+  }
+  /** Who uploaded the current activities.json: {name, trusted: true / false / null (not checked), reason}. Sweep 18.11.2026:
+   *  "not checked" (no uploader in the listing, no listing, the users / groups read failed) was null and published without
+   *  asking; it is now its own answer, and publish2 asks (defaulting to leaving the entries out). The reason goes to the console. */
+  async function siteUploader(r) {
+    const unchecked = (reason, name) => { console.warn("activities uploader not checked:", reason); return { name: name || "", trusted: null, reason }; };
+    if (!r || !r.folderId || !r.fileId) return unchecked("no file id of activities.json");
+    if (!B.listFolder) return unchecked("ArstenBackup.listFolder missing");
+    let u = null;
+    try {
+      const c = coreFor();
+      const f = ((await B.listFolder(c, r.folderId)).items || []).find((x) => x && x.id === r.fileId);
+      u = f && (f.modifiedBy || f.createdBy);
+      if (!u) return unchecked(f ? "no uploader in the listing" : "activities.json not in the listing");
+      const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id || "?";
+      // not the summaries' trust cache: that list (00_ADMIN / 02.1) does not hold 02, who also edit Дейности
+      const list = await CS.trustedUploaders(c, state.project.id, CS.SITE_GROUPS);
+      const trusted = CS.uploadedByTrusted(f, list);
+      return trusted == null ? unchecked("uploader not comparable", name) : { name, trusted };
+    } catch (e) { return unchecked(errText(e), u && ([u.firstName, u.lastName].filter(Boolean).join(" ") || u.email)); }
+  }
+  /** The activities for the summary and who uploaded their list: {out, r, who} (who null when nothing goes out). */
+  async function readSite(day) {
+    const r = await AV.load(coreFor(), state.project.id, fetchFor());
+    const out = AV.forSummary(r.items, day, { photos: true });
+    return { r, out, who: out.length ? await siteUploader(r) : null };
+  }
+
   // ---------- publish (admin / GC) ----------
   // Round 10 M2: the pour statuses, the acceptance and the "based on" models are read again right before building, so a
   // panel left open since the morning does not publish the morning's figures stamped as today.
-  let publishing = false;
+  // Sweep 18.11.2026: a model event during publishing (a model streamed in, a stage changed while the question waits)
+  // ran a full load: state.lib = null and new pour objects under the half-built summary, so the acceptance could go out
+  // empty or other pours than the PM saw. Loads now wait for the publish (runLoad), a running load finishes before the
+  // publish starts, and publish2 keeps its own copy of the library.
+  let publishing = false, publishDone = null;
+  /** The panel shows its data (the last load ran to the end): publishing may start. */
+  const pubReady = () => !!state.ready;
   async function publish() {
-    if (!canPublish() || !state.lib || publishing) return;
+    if (!canPublish() || publishing) return;
     publishing = true;
+    let done = null;
+    publishDone = new Promise((r) => { done = r; });
     $("btnPublish").disabled = true;
-    try { await publish2(); } finally { publishing = false; $("btnPublish").disabled = !state.objects.length || !state.lib; }
+    try {
+      if (loadRun) await loadRun;   // a load already running ends first (loads started from now on wait)
+      if (pubReady()) await publish2();
+    } finally { publishing = false; publishDone = null; done(); $("btnPublish").disabled = !pubReady(); }
+  }
+  /** Upload the summary file. Sweep 18.11.2026 (b): state.folderCache lives as long as the panel and ensureFolder trusts
+   *  a cached id, so a _AM_Docs/Client deleted or recreated meanwhile failed every later publish of the session with a
+   *  404. A 404 / 403 now drops the cached and the remembered (sessionStorage) ids and tries once more, afresh. */
+  async function uploadSummary(c, day, sum) {
+    const once = async () => {
+      state.folderCache = state.folderCache || new Map();
+      const folderId = await B.ensureFolder(c, state.project.id, CS.FOLDER, state.folderCache);
+      await B.uploadJson(c, folderId, CS.fileName(day), CS.toJson(sum), { fetch: window.ARSTEN_FETCH });
+    };
+    try { await once(); }
+    catch (e) {
+      if (!(e && (e.status === 404 || e.status === 403))) throw e;
+      console.warn("summary upload: the folder id may be stale - looked up afresh once", e);
+      state.folderCache = new Map();
+      if (typeof B.forgetFolder === "function") B.forgetFolder(c, state.project.id, CS.FOLDER);
+      await once();
+    }
   }
   async function publish2() {
-    const day = S.today();
-    setStatus(lang === "bg" ? "Четене на статусите на тактовете…" : "Reading the pour statuses…");
-    await loadRecords(state.lib);      // fresh pour statuses at publishing time
-    setStatus(lang === "bg" ? "Четене на приемането на армировката…" : "Reading the rebar acceptance…");
-    await loadAcceptance(state.lib);   // fresh acceptance state at publishing time
-    setStatus(lang === "bg" ? "Четене на моделите („Въз основа на“)…" : "Reading the models (\"Based on\")…");
-    await loadBasis(state.lib);
-    // B-Client 2: the steel totals afresh (read-only). Round 16 M1: no steel library = no steel section, as before; a
-    // library that cannot be read, or a failed read (one more try on 429 / timeout), is never dropped silently: the
-    // publish box asks "publish without the steel / cancel" and says when the client would stop seeing the steel.
-    setStatus(lang === "bg" ? "Четене на стоманата (STEEL/Монтаж)…" : "Reading the steel (STEEL/Монтаж)…");
-    const got = await readSteel();
+    const day = S.today(), lib = state.lib;   // lib may be null: no pour library (steel / activities only, finding 4)
+    state.pubDone = null;
+    // progress texts as functions: rebuilt in the new language after a language switch (sweep 18.11.2026)
+    const prog = (k) => setStatus(() => t(k));
+    // Sweep 18.11.2026 (b, speed): the fresh reads (pour statuses, acceptance, "based on", steel, activities + who
+    // uploaded them, the last summary) do not need each other's results; they ran one after the other (the steel alone
+    // reads the whole steel model) and the PM watched six progress texts for many seconds. They now start together,
+    // each caught into {v} / {e}; the questions below come in the same order as before, on the settled results.
+    prog("pubRead");
+    const settle = (fn) => Promise.resolve().then(fn).then((v) => ({ v }), (e) => ({ e }));
+    const [rec, , , steelR, siteR, lastR] = await Promise.all([
+      settle(() => (lib ? loadRecords(lib) : null)),       // fresh pour statuses at publishing time
+      settle(() => (lib ? loadAcceptance(lib) : null)),    // fresh acceptance state (never throws)
+      settle(() => loadBasis(lib)),                        // never throws
+      // B-Client 2: the steel totals afresh (read-only). Round 16 M1: no steel library = no steel section, as before; a
+      // library that cannot be read, or a failed read (one more try on 429 / timeout, inside readSteel), is never
+      // dropped silently: the publish box asks "publish without the steel / cancel".
+      settle(readSteel),
+      settle(() => (AV ? readSite(day) : null)),
+      settle(latestPublished),
+    ]);
+    if (!lib) { state.records = new Map(); state.accepted = null; }
+    if (rec.e) throw rec.e;
+    const got = steelR.e ? { error: steelR.e } : steelR.v;
     const steel = got.error ? null : got.steel || null;
     // Дейности afresh (a read error asks "publish without them?", as the steel does: never dropped silently)
-    let siteOut = [];
-    if (!AV && !window.confirm(t("siteReadFail") + "\n(arsten-activities.js)")) { setStatus(t("pubCancelled")); return; }
-    if (AV) {
-      setStatus(lang === "bg" ? "Четене на дейностите…" : "Reading the activities…");
-      try { const r = await AV.load(coreFor(), state.project.id, fetchFor()); siteOut = AV.forSummary(r.items, day, { photos: true }); }
-      catch (e) { console.warn("activities not read", e); setStatus(""); if (!window.confirm(t("siteReadFail") + `\n(${errText(e).slice(0, 160)})`)) { setStatus(t("pubCancelled")); return; } }
+    let siteOut = [], siteLeft = "";
+    if (!AV) { setStatus(""); if (!(await askPub([t("siteReadFail"), "(arsten-activities.js)"], "pubWithout", "steelCancel"))) { setStatus(() => t("pubCancelled")); return; } }
+    else if (siteR.e) {
+      console.warn("activities not read", siteR.e); setStatus("");
+      if (!(await askPub([t("siteReadFail"), `(${errText(siteR.e).slice(0, 160)})`], "pubWithout", "steelCancel"))) { setStatus(() => t("pubCancelled")); return; }
+    } else {
+      siteOut = siteR.v.out;
+      const who = siteR.v.who;
+      // sweep 18.11.2026: activities.json is a plain project file; anyone with file write could add "for the client"
+      // entries. Its uploader is checked as the summaries' are; someone outside 00_ADMIN / 02 / 02.1 is asked about, and
+      // so is an uploader that could not be checked (then the first button leaves the entries out).
+      if (siteOut.length && who && who.trusted !== true) {
+        setStatus("");
+        const list = siteLines(siteOut, null).join("\n");
+        const keep = who.trusted === false
+          ? await askPub([`${t("siteWho")} ${who.name}, ${t("siteWhoOut")}`, list], "siteInclude", "siteLeave")
+          : !(await askPub([t("siteWhoUnknown"), list], "siteLeave", "siteInclude"));
+        if (!keep) { siteOut = []; siteLeft = who.trusted === false ? "siteLeft" : "siteLeftUnknown"; }
+      }
     }
-    const prev = await latestPublished();
-    const hadSteel = !!(prev && prev.steel);
+    const last = lastR.e ? { error: lastR.e } : lastR.v;
+    const prev = last.sum || null, prevFail = !!last.error;
+    // not readable: assume the client had steel and concrete, so their "will disappear" lines are never lost
+    const hadSteel = prevFail || !!(prev && prev.steel);
     if (got.error) {
       setStatus("");
-      if (!(await askSteel(got.error, hadSteel))) { setStatus(t("pubCancelled")); return; }
+      if (!(await askSteel(got.error, hadSteel))) { setStatus(() => t("pubCancelled")); return; }
     }
+    // finding 4: no pours, no steel and no activities: nothing for the client (an empty summary would only blank it)
+    if (!state.objects.length && !steel && !siteOut.length) { setStatus(() => t("pubNothing"), true); return; }
     if (state.asOf && !state.days.includes(state.asOf)) state.asOf = "";
     render();                          // the live view shows the fresh figures behind the confirm dialog
-    setStatus(lang === "bg" ? "Подготовка на резюмето…" : "Preparing the summary…");
+    prog("pubPrep");
     // the photos of the client entries are copied to _AM_Docs/Client/Photos only after the confirm below; the summary
     // shown in the confirm is built without them, then built again with the copies' ids (same inputs, same time stamp)
-    const nPhotos = siteOut.reduce((n, x) => n + ((x.src || []).length), 0);
+    const countPhotos = () => siteOut.reduce((n, x) => n + ((x.src || []).length), 0);
+    const nPhotos = countPhotos();
     const buildArgs = { date: day, now: new Date(), project: state.project, objects: state.objects, pours: state.pours, loose: state.loose, records: state.records,
       accepted: state.accepted, note: $("inNote").value, basedOn: { stage: $("inStage").value, models: state.models }, steel, site: siteOut };
     let sum = CS.build(buildArgs);
@@ -726,60 +1151,116 @@
     const qLines = q.split("\n");
     if (sum.steel && RP) qLines.splice(2, 0, RP.steelCard(sum.steel, lang).replace(/<[^>]+>/g, ""));
     else if (hadSteel) qLines.splice(2, 0, t("steelLeft"));   // round 16 M1: the client's steel card would disappear
-    // activities going out: how many, and how many in the report week
+    // finding 4: the pour model not loaded right now would blank the client's concrete figures: said, as for the steel
+    if (!state.objects.length && (prevFail || (prev && prev.counts && prev.counts.pours > 0))) qLines.splice(2, 0, t("concreteLeft"));
+    if (prevFail) qLines.splice(2, 0, t("prevFail"));
+    // activities going out: how many, and how many in the report week; the entries new since the last published summary
+    // are listed with their whole text, and photos added since to an entry that went out before are listed apart (date,
+    // text, +N photos). Sweep 18.11.2026 (b): more than SITE_SHOW_MAX lines need "Покажи всички" before "Публикувай",
+    // and the new photos are shown as thumbnails with "не за клиента" each.
+    let full = null, photosAsk = [];
+    const drop = new Set();
     if (sum.site && sum.site.length) {
       const wk = sum.site.filter((x) => x.date > sum.week.from).length;
       qLines.splice(qLines.length - 1, 0, `${t("sitePub")}: ${sum.site.length} (${t("siteWeek")}: ${wk})${nPhotos ? ` · ${t("sitePhotos")}: ${nPhotos}` : ""}`);
-    }
+      const ch = siteChanges(siteOut, prev);
+      const blocks = (fresh, photos) => [fresh.length ? `${t("siteNew")}:\n${fresh.join("\n")}` : t("siteNoNew")].concat(photos.length ? [`${t("sitePhNew")}:\n${photos.join("\n")}`] : []);
+      const at = qLines.length - 1;
+      if (ch.freshAll.length > SITE_SHOW_MAX || ch.photosAll.length > SITE_SHOW_MAX) { full = qLines.slice(); full.splice(at, 0, ...blocks(ch.freshAll, ch.photosAll)); }
+      qLines.splice(at, 0, ...blocks(ch.fresh, ch.photos));
+      photosAsk = ch.newPhotos;
+    } else if (siteLeft) qLines.splice(qLines.length - 1, 0, t(siteLeft));
     // round 19 L8: the note that goes out with it (a note pre-filled from the last summary must not go out unseen)
     const noteOut = String(sum.clientNote || "").trim();
     const noteShown = noteOut.length > 300 ? noteOut.slice(0, 300) + "…" : noteOut;
-    qLines.splice(qLines.length - 1, 0, noteOut ? (lang === "bg" ? `Бележка: „${noteShown}“` : `Note: "${noteShown}"`) : (lang === "bg" ? "Без бележка." : "No note."));
-    if (!window.confirm(qLines.join("\n"))) { setStatus(""); return; }
+    const noteLine = noteOut ? (lang === "bg" ? `Бележка: „${noteShown}“` : `Note: "${noteShown}"`) : (lang === "bg" ? "Без бележка." : "No note.");
+    qLines.splice(qLines.length - 1, 0, noteLine);
+    if (full) full.splice(full.length - 1, 0, noteLine);
+    setStatus("");
+    if (!(await askPub(qLines, "pubGo", "steelCancel", { full, photos: photosAsk, drop }))) { setStatus(() => t("pubCancelled")); return; }
+    // the photos ticked "не за клиента" are not copied (the entry still goes out, with the others)
+    if (drop.size) siteOut = siteOut.map((x) => (x.src ? Object.assign({}, x, { src: x.src.filter((p) => !drop.has(p.id)) }) : x));
+    const nCopy = countPhotos();
     const c = coreFor();
-    let photoNote = "";
-    if (nPhotos && AV) {
-      setStatus(`${t("sitePhCopy")} 0 / ${nPhotos}…`);
+    let failed = 0;
+    if (nCopy && AV) {
+      let cpDone = 0, cpAll = nCopy;
+      setStatus(() => `${t("sitePhCopy")} ${cpDone} / ${cpAll}…`);
       const cp = await AV.copyForClient({ core: c, projectId: state.project.id, site: siteOut, fetch: fetchFor(),
-        onProgress: (d, n) => setStatus(`${t("sitePhCopy")} ${d} / ${n}…`) });
+        onProgress: (d, n) => { cpDone = d; cpAll = n; setStatus(() => `${t("sitePhCopy")} ${cpDone} / ${cpAll}…`); } });
       sum = CS.build(Object.assign({}, buildArgs, { site: cp.site }));
       const v2 = CS.validate(sum);
       if (!v2.ok) throw new Error((lang === "bg" ? "Резюмето не е безопасно за клиента и НЕ е публикувано: " : "The summary is not client-safe and was NOT published: ") + v2.errors.slice(0, 3).join("; "));
-      if (cp.failed) photoNote = ` · ${cp.failed} ${t("sitePhFailed")}`;
+      failed = cp.failed || 0;
     }
-    state.folderCache = state.folderCache || new Map();
-    const folderId = await B.ensureFolder(c, state.project.id, CS.FOLDER, state.folderCache);
-    await B.uploadJson(c, folderId, CS.fileName(day), CS.toJson(sum), { fetch: window.ARSTEN_FETCH });
+    prog("pubSaving");
+    await uploadSummary(c, day, sum);
+    // the place of the file is for the diagnostics, not for the PM (sweep 18.11.2026, as Дейности)
+    (console.info || console.log)(`[Статус] published for the client: ${CS.FOLDER.join("/")}/${CS.fileName(day)}`);
     try { await refreshSummaries(); } catch {}
     if (!sumFile(day)) state.summaries.unshift({ day, id: "", name: CS.fileName(day), modifiedOn: "", stamp: `local|${day}|${sum.published}` });
     state.sums.set(sumFile(day).stamp, sum);   // what was just uploaded is that version
-    setStatus((lang === "bg" ? `Публикувано за клиента: ${CS.FOLDER.join("/")}/${CS.fileName(day)}` : `Published for the client: ${CS.FOLDER.join("/")}/${CS.fileName(day)}`) + photoNote, !!photoNote);
+    // finding 10: the success line and "Печат на седмичния отчет" in the publish box (no detour through "Виж като клиент")
+    state.pubDone = { day, failed };
+    setStatus(() => `${t("published2")} (${fmtDate(day)})` + (failed ? ` · ${failed} ${t("sitePhFailed")}` : ""), !!failed);
     render();
+  }
+  /** Finding 10 (sweep 18.11.2026): the weekly report of the summary just published, from the live view. */
+  async function printPublished() {
+    const pd = state.pubDone;
+    if (!pd || !sumFile(pd.day)) return;
+    await openSummary(pd.day);
+    state.reportAny = true;
+    state.period = "week";
+    return openReport();
   }
 
   // ---------- save view ----------
-  async function saveView() {
-    if (state.role === "client") return;
-    const name = window.prompt(lang === "bg" ? "Име на изгледа:" : "View name:",
-      `${t("title")} ${fmtDate(state.asOf || S.today())}`);
-    if (!name) return;
+  // Sweep 18.11.2026: the name is asked in the panel (window.prompt can be blocked by Connect's frame or the mobile
+  // webview: it then returned null and the button seemed dead, with no message)
+  function saveView() {
+    if (clientLook()) return;
+    $("inViewName").value = `${t("title")} ${fmtDate(state.asOf || S.today())}`;
+    $("viewAsk").hidden = false;
+    renderViewAsk();
+    try { $("inViewName").focus(); } catch {}
+  }
+  function renderViewAsk() {
+    if (clientLook()) $("viewAsk").hidden = true;
+    $("lblViewName").textContent = t("viewName");
+    $("btnViewSave").textContent = t("viewSave"); $("btnViewCancel").textContent = t("viewCancel");
+  }
+  async function saveViewNow() {
+    if (clientLook()) return;
+    const name = String($("inViewName").value || "").trim() || `${t("title")} ${fmtDate(state.asOf || S.today())}`;
+    $("viewAsk").hidden = true;
     if (!state.coloured) { state.coloured = true; $("chkColour").checked = true; await applyColours(); }
     await state.api.view.createView({ name, description: `${t("title")} · ${t("asOfLbl")} ${fmtDate(state.asOf || S.today())}` });
-    setStatus(lang === "bg" ? `Изгледът „${name}“ е запазен. Споделете го от Изгледи → ⋮ → Редакция → „Shared with“.`
-      : `View "${name}" saved. Share it from Views → ⋮ → Edit → "Shared with".`);
+    setStatus(() => t("viewSaved").replace("{n}", name));
   }
 
   // ---------- wiring ----------
   $("chkColour").onchange = (e) => guarded(async () => { state.coloured = e.target.checked; await applyColours(); });
-  $("btnView").onclick = () => guarded(saveView);
+  $("btnView").onclick = () => saveView();
+  $("btnViewSave").onclick = () => guarded(saveViewNow);
+  $("btnViewCancel").onclick = () => { $("viewAsk").hidden = true; };
+  $("inViewName").onkeydown = (e) => { if (e.key === "Enter") guarded(saveViewNow); else if (e.key === "Escape") $("viewAsk").hidden = true; };
+  $("btnPubPrint").onclick = () => guarded(printPublished);
   let asOfTimer = null;
-  $("rngAsOf").oninput = (e) => {
-    const d = state.days[+e.target.value] || "";
+  /** The slider's day: an index into state.days (today = the last one). */
+  function setAsOfIndex(i) {
+    const d = state.days[i] || "";
     state.asOf = d && d < S.today() ? d : "";
     render();
     clearTimeout(asOfTimer);
     if (state.coloured) asOfTimer = setTimeout(() => guarded(applyColours), 250);
-  };
+  }
+  $("rngAsOf").oninput = (e) => setAsOfIndex(+e.target.value);
+  // sweep 18.11.2026 (b): "‹ ден" / "ден ›" / "‹ седмица" move the day by 1 or 7 (last Friday is hard to hit by finger)
+  const stepAsOf = (n) => { if (state.days.length < 2) return; setAsOfIndex(Math.min(state.days.length - 1, Math.max(0, asOfIndex() + n))); };
+  $("btnDayBack").onclick = () => stepAsOf(-1);
+  $("btnDayFwd").onclick = () => stepAsOf(1);
+  $("btnWeekBack").onclick = () => stepAsOf(-7);
   $("btnToday").onclick = () => guarded(async () => { state.asOf = ""; render(); if (state.coloured) await applyColours(); });
   $("btnMore").onclick = () => { state.showAll = true; render(); };
   $("selLang").value = lang;
@@ -794,10 +1275,11 @@
   });
   async function setAsClient(on) {
     if (on && state.steelAsk) answerSteel(false);   // a pending "publish without the steel?" is cancelled
+    if (on && state.pubAsk) answerPub(false);       // and a pending publish question
     state.asClient = on;
     $("chkAsClient").checked = on;
     state.sumPicked = false;
-    state.report = false;
+    state.report = false; state.reportAny = false;
     if (state.asClient) { await openSummary(state.summaries[0] && state.summaries[0].day); state.look = state.sumDay ? "summary" : "live"; }
     else { state.look = "live"; if (state.staffStatus) setStatus(state.staffStatus); }
     render();
@@ -806,29 +1288,38 @@
   $("chkAsClient").onchange = (e) => guarded(() => setAsClient(e.target.checked));
   $("btnLeaveClient").onclick = () => guarded(() => setAsClient(false));
   $("btnSteelGo").onclick = () => answerSteel(true);
+  $("btnPubGo").onclick = () => answerPub(true);
+  $("btnPubCancel").onclick = () => answerPub(false);
   $("btnSteelCancel").onclick = () => answerSteel(false);
   $("btnPublish").onclick = () => guarded(publish);
+  $("btnRetry").onclick = () => { $("btnRetry").hidden = true; resetPhotoTries(); return runLoad(true); };
   // B-Client 4: "Печат / PDF" opens the print view of the shown summary and the print dialog
   $("btnPrint").onclick = () => guarded(openReport);
   $("btnDoPrint").onclick = () => guarded(printWhenReady);   // after Седмица -> Месец the month's photos load first
-  $("btnBack").onclick = () => { state.report = false; render(); };
+  $("btnBack").onclick = () => { state.report = false; state.reportAny = false; render(); };
   $("btnWeek").onclick = () => { state.period = "week"; render(); };
   $("btnMonth").onclick = () => { state.period = "month"; render(); };
 
   /** One full load. Returns true when the panel shows the data (then a later event with the same models skips the reload). */
-  async function load(key) {
+  let loadGen = 0;
+  async function load(key, specs) {
+    const gen = ++loadGen;
     setStatus(lang === "bg" ? "Зареждане…" : "Loading…");
+    $("btnRetry").hidden = true;
     state.lib = null;
+    state.ready = false;
     // Round 12 M4: the independent reads at the same time: the pour objects (viewer), the published summaries (Core,
     // with the uploader check) and, for admin / GC, the library lookup (pset-api). Errors are reported in the same order.
     let poursErr = null, sumErr = null;
     const libP = state.role !== "client" ? state.client.findLibrary(state.project.id, S.LIB_NAMES) : null;
     if (libP) libP.catch(() => {});   // awaited below; an error here must not be "unhandled" when there are no pours
-    await Promise.all([
-      loadPours().catch((e) => { poursErr = e; state.pours = []; state.loose = []; state.objects = []; }),
-      // published summaries: the client reads ONLY these
-      refreshSummaries().catch((e) => { sumErr = e; state.summaries = []; console.warn("summaries not listed", e); }),
-    ]);
+    const poursP = loadPours(specs).catch((e) => { poursErr = e; state.pours = []; state.loose = []; state.objects = []; });
+    // published summaries: the client reads ONLY these
+    await refreshSummaries().catch((e) => { sumErr = e; state.summaries = []; console.warn("summaries not listed", e); });
+    state.sumErr = sumErr;   // publishing then reads the list again before taking "none" for sure (finding 2)
+    // Sweep 18.11.2026: the summary text, dates and totals come from the published file; the pour objects only colour the
+    // model. The client (and staff in "Виж като клиент") see the summary at once, not after a serial scan of the model
+    // (which on a phone with the architecture or steel model loaded reads every object); the colours follow.
     if (state.role === "client") {
       // M1 (round 11): summary only. No library, no pour records, no acceptance, never a live fallback.
       state.records = new Map(); state.accepted = null; state.lib = null;
@@ -837,41 +1328,78 @@
         $("main").hidden = false;
         setStatus(() => `${t("published")} ${fmtDate(state.sumDay)}`);
         render();
+        await poursP;
         if (state.coloured) await applyColours();
         return true;
       }
       state.look = "live"; state.sumDay = "";
       $("main").hidden = true;
+      // Sweep 18.11.2026 (finding 5): "no report" only when the listing worked, was complete and was empty. A failed
+      // listing, a cut-off one or files that would not open is "could not load" with "Опитай пак": a client on weak
+      // signal took "Все още няма публикуван отчет" for "the team published nothing".
+      if (sumErr || !state.sumComplete || state.summaries.length) {
+        const why = sumErr && I18N && I18N.friendly ? () => `${t("loadFail")} (${I18N.friendly(sumErr, lang)})` : () => t("loadFail");
+        setStatus(why, true);
+        $("btnRetry").textContent = t("retry");
+        $("btnRetry").hidden = false;
+      } else setStatus(t("noReport"));
       if (state.coloured) { state.coloured = false; $("chkColour").checked = false; try { await applyColours(); } catch {} }
-      return setStatus(t("noReport"));
+      await poursP;   // finished inside this load (loads run one at a time), so a late scan never overwrites a newer one
+      return;
     }
+    if (state.asClient && state.summaries.length) {
+      // staff in "Виж като клиент": the summary first; the live data below is read as before (for leaving the view)
+      try {
+        if (await openFirstReadable()) {
+          state.look = "summary";
+          $("main").hidden = false;
+          setStatus(() => `${t("published")} ${fmtDate(state.sumDay)}`);
+          render();
+        }
+      } catch (e) { console.warn("summary not read", e); }
+    }
+    await poursP;
     if (poursErr) throw poursErr;
-    if (!state.objects.length) { $("main").hidden = true; return setStatus(t("noPours"), true); }
-    const found = await libP;
-    if (!found.lib) { $("main").hidden = true; return setStatus(t("noLib"), true); }
-    state.lib = found.lib;
+    // Finding 4 (sweep 18.11.2026): no pour objects in the loaded models (a steel-only hall, an early project with only
+    // site works, a stage with only the architecture model) is a valid state for staff: the view stays, with "Няма
+    // заредени тактове", the steel and the activities, and the PM can still publish. It hid the view, blocked publishing
+    // and, in "Виж като клиент", hid the summary again; the load also never counted as done (every model event reloaded).
+    const noPours = !state.objects.length;
+    let found = null;
+    if (noPours) { try { found = await libP; } catch (e) { console.warn("pour library not looked up (no pours loaded)", e); } }
+    else found = await libP;
+    if (!noPours && !found.lib) { $("main").hidden = true; return setStatus(t("noLib"), true); }
+    state.lib = (found && found.lib) || null;
     // records, acceptance and "based on" at the same time (round 12 M4); only the records can fail the load
-    await Promise.all([loadRecords(found.lib), loadAcceptance(found.lib), loadBasis(found.lib)]);
+    if (noPours) { state.records = new Map(); state.days = []; await Promise.all([loadAcceptance(state.lib), loadBasis(state.lib)]); }
+    else await Promise.all([loadRecords(found.lib), loadAcceptance(found.lib), loadBasis(found.lib)]);
     if (state.asClient && state.summaries.length) { try { await openSummary(reloadDay()); state.look = "summary"; } catch { state.look = "live"; } }
     else state.look = "live";
-    // the PM's last client note, as a starting point for the next publish
-    if (canPublish() && !$("inNote").value && state.summaries.length) {
-      const keep = state.sumDay;
-      try { const s = await openSummary(state.summaries[0].day); $("inNote").value = s.clientNote || ""; if (!state.asClient) state.look = "live"; } catch {}
-      if (state.asClient && keep && sumFile(keep)) state.sumDay = keep;   // reading the note does not change the day shown
-    }
     $("main").hidden = false;
     const nLoose = looseCount();   // round 14: as Монолитен бетон, "N такта"; the objects with no pour number apart
-    state.staffStatus = () => `${state.pours.length} ${tn(state.pours.length, "poursWord")} · ${state.objects.length} ${tn(state.objects.length, "objects")}`
+    state.staffStatus = () => (state.objects.length ? `${state.pours.length} ${tn(state.pours.length, "poursWord")} · ${state.objects.length} ${tn(state.objects.length, "objects")}` : t("noPoursHint"))
       + (nLoose ? ` · ${t("loose")}: ${nLoose} ${tn(nLoose, "objects")}` : "")
       + (sumErr && isStaff() ? ` · ${lang === "bg" ? "резюметата не се четат" : "summaries not readable"}: ${errText(sumErr)}` : "");
     setStatus(state.staffStatus);
     render();
+    prefillNote(gen);   // after the first paint (finding 1)
     if (state.coloured) await applyColours();
     // B-Client 2: steel totals for the staff live view, after the first screen (read-only; publishing reads them again).
     // Round 17 M1: only when the model set changed or the last read is older than 5 minutes.
     refreshSteel(key);
     return true;
+  }
+
+  /** The PM's last client note, as a starting point for the next publish. Sweep 18.11.2026 (finding 1): read in the
+   *  background after the view is shown (it was a downloadurl + JSON download in series before the first paint); written
+   *  only if the box is still empty, no newer load started and no publish is running. Does not change the day shown. */
+  function prefillNote(gen) {
+    if (!canPublish() || $("inNote").value || !state.summaries.length) return;
+    const f = state.summaries[0];
+    const got = state.sums.has(f.stamp) ? Promise.resolve(state.sums.get(f.stamp))
+      : CS.readSummary(coreFor(), f.id, fetchFor()).then((s) => { state.sums.set(f.stamp, s); return s; });
+    got.then((s) => { if (gen === loadGen && !publishing && !$("inNote").value && s && s.clientNote) $("inNote").value = s.clientNote; },
+      (e) => console.warn("last client note not read", e));
   }
 
   // ---------- loads: one at a time; a model event with the same models re-reads nothing (round 17 M1) ----------
@@ -894,18 +1422,23 @@
   // load queued behind it (any number of events while a load runs queue exactly one more; a forced one stays forced).
   let lastModelsKey = null, loadRun = null, loadNext = null;
   async function loadOnce(force) {
-    const key = modelSetKey(await loadedModels());
+    const specs = await loadedModels();
+    const key = modelSetKey(specs);
     if (!force && sameModelSet(lastModelsKey, key)) {
+      if (Date.now() - ownStateAt < OWN_MS) return;   // our own colouring's event (finding 4)
       console.info("[Статус] model event: the loaded models did not change – no reload");
       if (state.coloured && !$("main").hidden) await applyColours();
       refreshSteel(key);   // only if the live steel is older than 5 minutes
       return;
     }
     lastModelsKey = null;
-    if (await load(key)) lastModelsKey = key;
+    if (await load(key, specs)) { lastModelsKey = key; state.ready = true; renderPublish(); }
   }
   /** force: the first load (and tests' refresh); a model event is not forced and is skipped for the same model set. */
   function runLoad(force) {
+    // sweep 18.11.2026: no load while publishing (it would swap the library and the pour objects under the summary);
+    // the load runs after the publish
+    if (publishing && publishDone) return publishDone.then(() => runLoad(force));
     if (loadRun) {
       if (loadNext) { if (force) loadNext.force = true; return loadNext.p; }
       const q = loadNext = { force: !!force };
@@ -944,7 +1477,7 @@
     await runLoad(true);
   }
   // reload: what a model event runs after its debounce (skipped for the same models); refresh: a forced full load (tests)
-  window.ProjectStatusApp = { start, state, panelRole, reload: () => runLoad(false), refresh: () => runLoad(true), modelSetKey, sameModelSet,
+  window.ProjectStatusApp = { start, state, panelRole, reload: () => runLoad(false), _ownState: (at) => { ownStateAt = at; }, refresh: () => runLoad(true), modelSetKey, sameModelSet,
     _token: { getToken, onToken, waiting: () => waiters.length } };
 
   let reloadTimer = null;

@@ -58,6 +58,7 @@
   details.det > summary::-webkit-details-marker { display:none; }
   details.det > summary::before { content:"▸"; margin-right:6px; }
   details.det[open] > summary::before { content:"▾"; }
+  #pubWhat > summary { cursor:pointer; min-height:32px; display:flex; align-items:center; }
   .seg { display:inline-flex; margin-left:auto; }
   .seg button { background:transparent; color:var(--ink); border-color:var(--line); }
   .seg button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
@@ -71,6 +72,7 @@
   input[type=text], textarea { font:inherit; width:100%; padding:6px; border:1px solid var(--line); background:#fff; border-radius:0; }
   textarea { resize:vertical; min-height:56px; }
   .ask { margin:8px 0; padding:8px 10px; border-left:3px solid var(--bad); background:#fbeeed; font-size:12.5px; }
+  .ask.pubq { border-left-color:var(--accent); background:#fff; border-top:1px solid var(--line); border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
   /* week 4: steel card (B-Client 2), print view (B-Client 4) */
   #steelCard { margin-top:8px; }
   #steelCard .big { font-size:20px; font-weight:600; color:var(--accent); vertical-align:-2px; }
@@ -95,12 +97,32 @@
   .rep-site li { display:flex; gap:6px; } .rep-site .d { flex:none; }
   .rep-ph { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; } .rep-ph img { width:120px; height:90px; object-fit:cover; border:1px solid var(--line); }
   .site .ph { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; } .site .ph img { width:64px; height:64px; object-fit:cover; border:1px solid var(--line); cursor:zoom-in; }
+  /* sweep 18.11.2026 (b): a tile whose URL is still being asked keeps its place (the list does not jump) */
+  .site .ph .ph-wait { display:inline-block; width:64px; height:64px; border:1px solid var(--line); background:#f1eee8; }
+  /* the photos going out, in the publish question, with "не за клиента" per photo */
+  .aph { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0; } .aph .sub { flex-basis:100%; }
+  .aph label { display:flex; flex-direction:column; align-items:center; gap:2px; font-size:11px; width:72px; }
+  .aph img, .aph .ph-wait { width:64px; height:64px; object-fit:cover; border:1px solid var(--line); background:#f1eee8; }
+  .aph label.drop img { opacity:.35; }
   #phView { position:fixed; inset:0; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; z-index:10; }
   #phView img { max-width:96vw; max-height:90vh; }
   .rep-l .d { display:inline-block; min-width:80px; color:var(--muted); font-variant-numeric:tabular-nums; }
   .rep-note { margin-top:10px; padding:6px 8px; border-left:3px solid var(--accent); background:#fbf3ec; font-size:12px; white-space:pre-wrap; }
   .rep-basis { margin-top:12px; font-size:11px; color:var(--muted); } .rep-basis b { color:var(--ink); }
   .rep-foot { margin-top:14px; padding-top:4px; border-top:1px solid var(--line); font-size:10.5px; color:var(--muted); text-align:right; }
+  /* sweep 18.11.2026: touch sizes as the other site panels (the client and the PM open Статус on phones); 16px text in
+     the fields so iOS does not zoom the page while the PM types the client note */
+  @media (pointer: coarse) {
+    button, button.small, select, input[type=text] { min-height:40px; }
+    button.small { padding:6px 12px; font-size:14px; }
+    select, input[type=text], textarea { font-size:16px; }
+    select, input[type=text] { padding:6px 8px; }
+    input[type=checkbox] { width:22px; height:22px; }
+    label.chk { min-height:40px; font-size:14px; }
+    input[type=range] { height:32px; }
+    .bar { gap:8px; }
+  }
+  .pubdone { color:#2E7D32; font-weight:600; }
   @media print {
     @page { size:A4; margin:14mm 12mm; }
     body { background:#fff; padding:0; font-size:11px; }
@@ -119,6 +141,8 @@
     <select id="selLang" title="Language / Език"><option value="bg">BG</option><option value="en">EN</option></select></div>
   <button type="button" class="small secondary" data-arsten-diag style="float:right;margin-left:6px">Копирай диагностика</button>
   <div id="status" class="status">Trimble Connect…</div>
+  <!-- sweep 18.11.2026: the client's "Опитай пак" when the report could not be loaded (not "nothing published") -->
+  <button id="btnRetry" hidden style="margin-bottom:8px"></button>
 
   <div id="main" hidden>
     <div class="bar" id="leaveBar" hidden style="margin-top:0"><button id="btnLeaveClient"></button></div>
@@ -133,9 +157,18 @@
         <label class="fld" for="inStage" id="lblStage"></label><input type="text" id="inStage" maxlength="200">
         <label class="fld" for="inNote" id="lblNote"></label><textarea id="inNote" rows="3" maxlength="2000"></textarea>
         <div class="bar"><button id="btnPublish"></button><span class="sub" id="pubInfo"></span></div>
+        <!-- sweep 18.11.2026: after a publish, the weekly report of it is one press away -->
+        <div class="bar" id="pubDone" hidden><span class="pubdone" id="pubDoneText"></span><button id="btnPubPrint" class="small secondary"></button></div>
         <div class="ask" id="steelAsk" hidden role="alert"><div id="steelAskText"></div>
           <div class="bar" style="margin-bottom:0"><button id="btnSteelGo"></button><button id="btnSteelCancel" class="secondary"></button></div></div>
+        <!-- sweep 18.11.2026: the publish question in the panel (window.confirm can be blocked in Connect's frame) -->
+        <div class="ask pubq" id="pubAsk" hidden role="alert"><div id="pubAskText" style="white-space:pre-line;overflow-wrap:anywhere"></div>
+          <!-- sweep 18.11.2026 (b): more than 20 new entries must be opened before "Публикувай"; the photos going out -->
+          <div class="bar" id="pubAllBar" hidden><button id="btnPubAll" class="small secondary"></button><span class="sub" id="pubAllHint"></span></div>
+          <div class="aph" id="pubAskPhotos" hidden></div>
+          <div class="bar" style="margin-bottom:0"><button id="btnPubGo"></button><button id="btnPubCancel" class="secondary"></button></div></div>
         <div class="sub" id="pubHint"></div>
+        <details class="sub" id="pubWhat"><summary id="pubWhatSum"></summary><div id="pubWhatText"></div></details>
       </div>
     </div>
 
@@ -160,13 +193,19 @@
         <button id="btnView" class="small secondary" style="margin-left:auto"></button>
       </div>
       <div id="legend" class="legend"></div>
+      <!-- sweep 18.11.2026: the view name in the panel (window.prompt can be blocked in Connect's frame) -->
+      <div id="viewAsk" hidden>
+        <label class="fld" for="inViewName" id="lblViewName"></label><input type="text" id="inViewName" maxlength="120">
+        <div class="bar" style="margin-bottom:0"><button id="btnViewSave"></button><button id="btnViewCancel" class="secondary"></button></div>
+      </div>
     </div>
 
     <h2 id="hAsOf"></h2>
     <div class="box" id="asOfBox">
       <div class="asof"><span id="lblAsOf"></span><b id="asOfDate"></b></div>
-      <input type="range" id="rngAsOf" min="0" max="0" value="0">
-      <div class="bar" style="margin-bottom:0"><button id="btnToday" class="small secondary"></button></div>
+      <!-- sweep 18.11.2026 (b): the label and the date are spoken with the slider; day / week steps for a phone -->
+      <input type="range" id="rngAsOf" min="0" max="0" value="0" aria-labelledby="lblAsOf asOfDate">
+      <div class="bar" style="margin-bottom:0"><button id="btnWeekBack" class="small secondary"></button><button id="btnDayBack" class="small secondary"></button><button id="btnDayFwd" class="small secondary"></button><button id="btnToday" class="small secondary"></button></div>
     </div>
 
     <details class="det" id="details"><summary id="sumDetails"></summary>
@@ -198,21 +237,21 @@
 <script src="https://cdn.jsdelivr.net/npm/trimble-connect-workspace-api@0.3.38/dist/iife/trimbleconnect.workspace.api.js" integrity="sha384-lFiNt/56q6HnUNbuy0WHO3NP6BkQjY4EH8+5eELYVfnhkB42snRTmSa3UOAlX9gg" crossorigin="anonymous"></script>
 <script src="arsten-perf.js?v=21f7454938"></script>
 <script src="arsten-diag.js?v=bb0c6351fe"></script>
-<script src="arsten-i18n.js?v=de006467e2"></script>
-<script src="arsten-access.js?v=253829d007"></script>
+<script src="arsten-i18n.js?v=c58f01c9fc"></script>
+<script src="arsten-access.js?v=fad565fcbe"></script>
 <script src="common.js?v=a04c428e31"></script>
-<script src="status.js?v=900f56b5c0"></script>
-<script src="psetapi.js?v=f5bc3d57fb"></script>
+<script src="status.js?v=5dfad10961"></script>
+<script src="psetapi.js?v=970df94af2"></script>
 <script src="arsten-links.js?v=7bf607a606"></script>
-<script src="arsten-acceptance.js?v=3fb82d4a41"></script>
-<script src="arsten-backup.js?v=032cc821bb"></script>
-<script src="progress.js?v=7669b8fbe4"></script>
-<script src="records.js?v=f037461491"></script>
+<script src="arsten-acceptance.js?v=f8e113bc4d"></script>
+<script src="arsten-backup.js?v=6c54dfe763"></script>
+<script src="progress.js?v=c853f700b7"></script>
+<script src="records.js?v=a7ccda6573"></script>
 <script src="fabrication.js?v=7108b8ac3e"></script>
 <script src="steel-summary.js?v=05bef6fa3f"></script>
-<script src="client-summary.js?v=acf24c8101"></script>
-<script src="report.js?v=01e85352b6"></script>
-<script src="arsten-activities.js?v=1a4b53ca35"></script>
-<script src="app.js?v=4e8212e6a1"></script>
+<script src="client-summary.js?v=89f27cc8bb"></script>
+<script src="report.js?v=04ca57236a"></script>
+<script src="arsten-activities.js?v=a54cd384f8"></script>
+<script src="app.js?v=337a174f8b"></script>
 </body>
 </html>

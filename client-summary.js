@@ -18,10 +18,11 @@
   const lib = factory(node ? require("./progress.js") : root.ProjectProgress, node ? require("./status.js") : root.PourStatus,
     node ? req2("../shared/arsten-acceptance.js", "./arsten-acceptance.js") : root.ArstenAcceptance,
     node ? req2("../shared/arsten-access.js", "./arsten-access.js") : root.ArstenAccess,
-    node ? require("./steel-summary.js") : root.SteelProgress);
+    node ? require("./steel-summary.js") : root.SteelProgress,
+    node ? req2("../shared/arsten-backup.js", "./arsten-backup.js") : root.ArstenBackup);
   if (node) module.exports = lib;
   else root.ClientSummary = lib;
-})(typeof self !== "undefined" ? self : this, function (P, S, ACC, AX, SP) {
+})(typeof self !== "undefined" ? self : this, function (P, S, ACC, AX, SP, BK) {
   "use strict";
 
   // 2: per pour step "na" (round 10 H1). 3 (week 4): optional "steel" totals (B-Client 2) and basedOn.unnumbered (round 14:
@@ -29,7 +30,7 @@
   // 4 (17.11.2026): optional "site" - the activities shown to the client ({text, date}, shared/arsten-activities.js forSummary). A
   // summary without site works is still written as version 3, so a panel that knows only 1-3 still reads it.
   const TYPE = "arsten-client-summary", VERSION = 4;
-  const SITE_TEXT_MAX = 200, SITE_MAX = 300, SITE_PHOTOS = 6, PHOTO_ID = /^[A-Za-z0-9_-]{1,80}$/;
+  const SITE_TEXT_MAX = 200, SITE_MAX = 300, SITE_PHOTOS = 6, PHOTO_ID = /^[A-Za-z0-9_-]{1,80}$/, PHOTO_ID_OR_EMPTY = /^[A-Za-z0-9_-]{0,80}$/;
   // The project's tool folder is _AM_Docs (renamed from _ArstenDocs on 17.11.2026, one name for Arsten and Multiplan).
   // Lookups take _AM_Docs first and fall back to an old _ArstenDocs; only _AM_Docs is ever created.
   const DOCS = "_AM_Docs", DOCS_OLD = "_ArstenDocs";
@@ -167,8 +168,19 @@
       .slice(0, SITE_MAX).map((x) => {
         const e = { text: str(x.text, SITE_TEXT_MAX), date: x.date };
         // photos: ids of the CLIENT copies in _AM_Docs/Client/Photos (shared/arsten-activities.js copyForClient)
-        const ph = (Array.isArray(x.photos) ? x.photos : []).filter((id) => typeof id === "string" && PHOTO_ID.test(id)).slice(0, SITE_PHOTOS);
+        // thumbs[i] is the client copy of the thumbnail of photos[i] ("" none). Kept in step with photos, so the client's
+        // phone loads the small image and opens the full one on a tap (sweep 18.11.2026: copyForClient made them, build
+        // dropped them, and the client list loaded one 2560 px JPEG per tile).
+        const th = Array.isArray(x.thumbs) ? x.thumbs : [];
+        const ph = [], tb = [];
+        (Array.isArray(x.photos) ? x.photos : []).forEach((id, i) => {
+          if (ph.length >= SITE_PHOTOS || typeof id !== "string" || !PHOTO_ID.test(id)) return;
+          ph.push(id);
+          const t = th[i];
+          tb.push(typeof t === "string" && PHOTO_ID.test(t) ? t : "");
+        });
         if (ph.length) e.photos = ph;
+        if (tb.some(Boolean)) e.thumbs = tb;
         return e;
       });
     if (site.length) { sum.site = site; sum.version = 4; }
@@ -197,6 +209,7 @@
   }
 
   // ---------- validation: a strict whitelist ----------
+  const UNIT_RE = /^(m²|m³|m2|m3|kg|t|m|бр\.?)?$/;
   const T = {
     s: (max, re) => ({ t: "string", max, re }), n: { t: "number" }, nn: { t: "number", min: 0 }, i: { t: "int" }, b: { t: "boolean" }, iOpt: { t: "int", optional: true },
     day: { t: "string", max: 10, re: DAY_RE }, dayOrEmpty: { t: "string", max: 10, re: /^(\d{4}-\d{2}-\d{2})?$/ },
@@ -211,7 +224,8 @@
       unnumbered: T.iOpt }),
     acceptance: T.b,
     counts: obj({ pours: T.i, objects: T.i, rebarAccepted: T.i, rebarPending: T.i, poured: T.i, pouredWithAcceptedRebar: T.i }),
-    totals: steps(obj({ qty: T.n, total: T.n, unit: T.s(8), pct: T.n, pours: T.i, weekQty: T.n })),
+    // unit: only the units a step can have (sweep 18.11.2026: it is the one field the views once put into HTML unescaped)
+    totals: steps(obj({ qty: T.n, total: T.n, unit: T.s(8, UNIT_RE), pct: T.n, pours: T.i, weekQty: T.n })),
     week: obj({ from: T.day }),
     pours: { t: "array", max: 5000, of: obj({ label: T.s(100), type: T.s(200), objects: T.i,
       rebar: { t: "enum", v: ["yes", "pending", "none", null] }, steps: steps(obj({ date: { t: "string", max: 10, re: DAY_RE, nullable: true }, done: T.i, na: T.iOpt })) }) },
@@ -221,7 +235,8 @@
       kg: obj({ total: T.nn, fabricated: T.nn, delivered: T.nn, erected: T.nn }) }), { optional: true }),
     // version 4: site works the staff marked for the client - what was done and the day, nothing else
     site: { t: "array", max: SITE_MAX, optional: true, of: obj({ text: T.s(SITE_TEXT_MAX), date: T.day,
-      photos: { t: "array", max: SITE_PHOTOS, optional: true, of: T.s(80, PHOTO_ID) } }) },
+      photos: { t: "array", max: SITE_PHOTOS, optional: true, of: T.s(80, PHOTO_ID) },
+      thumbs: { t: "array", max: SITE_PHOTOS, optional: true, of: T.s(80, PHOTO_ID_OR_EMPTY) } }) },
   });
   const V3_KEYS = [["steel"], ["basedOn", "unnumbered"]];   // not allowed in a version 1 / 2 file
   // keys that must never appear anywhere (defence in depth: the whitelist already refuses them; this names them)
@@ -306,6 +321,15 @@
   // member's upload is no longer trusted. Anyone else's file is dropped before the one-per-day choice, so a forged
   // newer file cannot hide the real one. If the members cannot be read, nothing is dropped and the files are "unverified".
   const TRUSTED_GROUPS = ["ADMIN", "EXECUTION PROJECT MANAGER"];   // group keys (number prefix removed)
+  // who may edit Дейности (arsten-access.js APPS.activities: admin + gc): the uploader of activities.json is checked
+  // against these before its "for the client" entries are published (sweep 18.11.2026)
+  const SITE_GROUPS = ["ADMIN", "GENERAL CONTRACTOR", "EXECUTION PROJECT MANAGER"];
+  /** Is the uploader of this file entry in the list? true / false; null when the entry names no uploader or no list. */
+  function uploadedByTrusted(item, list) {
+    const by = uploaderOf(item);
+    if (!by || !Array.isArray(list)) return null;
+    return list.some((u) => sameUser(u, by));
+  }
   const norm = (s) => String(s == null ? "" : s).trim().toLowerCase();
   const groupKey = (n) => (AX && AX.groupKey ? AX.groupKey(n) : norm(n).replace(/^\d+(?:[.,]\d+)*\s*[.)\-_:]?\s*/, "").trim());
   const sameUser = (a, b) => !!a && !!b && ((a.id && b.id && a.id === b.id) || (a.email && b.email && norm(a.email) === norm(b.email))
@@ -318,10 +342,11 @@
     return r.id || r.email || r.tiduuid ? r : null;
   }
   /** Users allowed to publish: Connect project ADMINs + members of the trusted groups. Throws when any read fails. */
-  async function trustedUploaders(core, projectId) {
+  // groups (sweep 18.11.2026): another list of group keys, e.g. SITE_GROUPS for the uploader of the activities list
+  async function trustedUploaders(core, projectId, groups0) {
     const pid = encodeURIComponent(projectId);
     const [users, groups] = await Promise.all([core.req(`projects/${pid}/users`), core.req(`groups?projectId=${pid}`)]);
-    const want = new Set(TRUSTED_GROUPS.map(groupKey));
+    const want = new Set((groups0 || TRUSTED_GROUPS).map(groupKey));
     const mine = itemsOf(groups).filter((g) => g && g.id && want.has(groupKey(g.name)));
     const members = await Promise.all(mine.map((g) => core.req(`groups/${encodeURIComponent(g.id)}/users`)));
     return [...itemsOf(users).filter((u) => u && norm(u.role) === "admin"), ...members.flatMap(itemsOf)].filter(Boolean)
@@ -412,18 +437,57 @@
     return [...byDay.values()].sort((a, b) => (a.day < b.day ? 1 : -1));
   }
   function itemsOf(it) { return Array.isArray(it) ? it : (it && it.items) || []; }
-  /** Folder id of a path under the project root WITHOUT creating anything (the client view only reads); null if missing. */
-  async function findFolder(core, projectId, names) {
+  // Sweep 18.11.2026: every page of a folder listing (shared/arsten-backup.js listFolder: Content-Range / skipToken / next
+  // link). _AM_Docs/Client gets one file per publishing day; on a one-page read the newest summaries (later pages, names
+  // sorted ascending) were silently missing. complete false = the listing may be cut off (the views then warn staff).
+  const PAGE_SIZES = [50, 100, 200, 250, 500, 1000, 2000, 5000];
+  async function listFolder(core, folderId) {
+    if (BK && typeof BK.listFolder === "function") return BK.listFolder(core, folderId);
+    const items = itemsOf(await core.req(`folders/${encodeURIComponent(folderId)}/items`));   // no paging helper loaded
+    return { items, complete: !PAGE_SIZES.includes(items.length) };
+  }
+  /** Core folders/by_path for /names...; the folder id or null (404 / 403 / not a folder; other errors to the console). */
+  async function folderByPath(core, projectId, names) {
+    try {
+      const g = await core.req(`folders/by_path?projectId=${encodeURIComponent(projectId)}&path=${encodeURIComponent("/" + names.join("/"))}`);
+      return g && g.id && (!g.type || String(g.type).toUpperCase() === "FOLDER") ? g.id : null;
+    } catch (e) {
+      if (!(e && (e.status === 404 || e.status === 403))) console.warn("summary folder lookup by path failed", e);
+      return null;
+    }
+  }
+  /** {id, complete}: folder id of a path under the project root WITHOUT creating anything; id null if missing (complete
+   *  false: a listing on the way may have been cut off, so "missing" is not sure). */
+  // Sweep 18.11.2026 (b, speed): every client open (and every "Опитай пак") walked GET project -> root listing (every
+  // page) -> _AM_Docs listing, which for 01.CLIENT finds nothing (AM_TEMPLATE closes _AM_Docs to the client), and only
+  // then asked folders/by_path: 3+ wasted serial calls, ~1-2 s on a phone, before "Зареждане…" went away. Now: the id
+  // remembered for this tab (shared/arsten-backup.js folderMemo, sessionStorage "arsten.folders.v1.<project>", as
+  // Дейности), else by_path for the whole path (one call), else the walk as before. A remembered id that answers 404 /
+  // 403 is forgotten by listSummaries, which then looks the folder up afresh once.
+  const memoOf = (core, projectId) => (BK && typeof BK.folderMemo === "function" ? BK.folderMemo(core, projectId) : null);
+  async function findFolderPaged(core, projectId, names, opts) {
+    const memo = memoOf(core, projectId), key = names.join("/");
+    const hit = memo && !(opts && opts.fresh) ? memo.get(key) : null;
+    if (hit) return { id: hit, complete: true, remembered: true };
+    const keep = (id) => { if (memo && id) memo.set(key, id); return id; };
+    // Connect may leave a folder out of its parent's listing when the user can read only a subfolder (AM_TEMPLATE:
+    // 01.CLIENT reads _AM_Docs/Client only), so the whole path is asked for directly first
+    const direct = await folderByPath(core, projectId, names);
+    if (direct) return { id: keep(direct), complete: true };
     const p = await core.req(`projects/${encodeURIComponent(projectId)}`);
     let parent = p && p.rootId;
-    if (!parent) return null;
+    if (!parent) return { id: null, complete: true };
     for (const name of names) {
-      const f = pickFolder(itemsOf(await core.req(`folders/${encodeURIComponent(parent)}/items`)), name);
-      if (!f) return null;
+      const l = await listFolder(core, parent);
+      const f = pickFolder(l.items, name);
+      // not in the listing and not found by path (asked above): missing, or not sure when the listing may be cut off
+      if (!f) return { id: null, complete: l.complete };
       parent = f.id;
     }
-    return parent;
+    return { id: keep(parent), complete: true };
   }
+  /** Folder id of a path under the project root WITHOUT creating anything (the client view only reads); null if missing. */
+  async function findFolder(core, projectId, names) { return (await findFolderPaged(core, projectId, names)).id; }
   /** {folderId, files: [{day, id, name, verified}], verified, dropped: [names], trustError}; no folder: {folderId: null, files: []}.
    *  verified false: the group members could not be read, so no file was checked (round 11 M2). */
   // opts.trustCache (round 12, L1 / M4): a trustCache(); the uploader check then comes from it, or runs at the same time
@@ -435,9 +499,22 @@
       (e) => ({ list: null, error: String((e && e.message) || e) }));
     const hit = cache ? cache.get(projectId) : null;
     const early = cache && !hit ? readTrust() : null;   // never rejects
-    const folderId = await findFolder(core, projectId, FOLDER);
-    if (!folderId) return { folderId: null, files: [] };
-    const items = await core.req(`folders/${encodeURIComponent(folderId)}/items`);
+    let ff = await findFolderPaged(core, projectId, FOLDER);
+    let listing = null;
+    if (ff.id && ff.remembered) {
+      // a remembered id that is gone (folder deleted / recreated) or closed to this user: forgotten, looked up afresh once
+      try { listing = await listFolder(core, ff.id); }
+      catch (e) {
+        if (!(e && (e.status === 404 || e.status === 403))) throw e;
+        const memo = memoOf(core, projectId);
+        if (memo) memo.forget(FOLDER.join("/"));
+        ff = await findFolderPaged(core, projectId, FOLDER, { fresh: true });
+      }
+    }
+    const folderId = ff.id;
+    if (!folderId) return ff.complete ? { folderId: null, files: [] } : { folderId: null, files: [], complete: false };
+    if (!listing) listing = await listFolder(core, folderId);
+    const items = listing.items;
     let trusted = null, trustError = "";
     if (itemsOf(items).some((it) => it && dayOfName(it.name))) {
       const r = hit ? { list: hit } : await (early || readTrust());
@@ -455,20 +532,32 @@
       }
     } else if (cache && !hit && trusted) cache.noteUntrusted(projectId, untrustedKeys(items, trusted));
     const verified = !!trusted && !unverified;
-    return { folderId, files: listFiles(kept).map((f) => Object.assign(f, { verified })), verified, dropped, trustError };
+    return { folderId, files: listFiles(kept).map((f) => Object.assign(f, { verified })), verified, dropped, trustError, complete: listing.complete !== false };
   }
   /** Download and validate one summary file. fetchImpl: the browser fetch (download URL from Core). */
-  async function readSummary(core, fileId, fetchImpl) {
+  // opts.ms: the time limit (tests); 30 s by default
+  async function readSummary(core, fileId, fetchImpl, opts) {
     const d = await core.req(`files/fs/${encodeURIComponent(fileId)}/downloadurl`);
     const url = d && (d.url || d.downloadUrl || d.href);
     if (!url) throw new Error("summary: no download URL");
-    // 30 s limit (round 12 M1): a download that never answers must not leave the client view loading forever
+    // 30 s limit (round 12 M1): a download that never answers must not leave the client view loading forever. Sweep
+    // 18.11.2026: the limit covers the body too (it was cleared when the headers came, so a body stalled on site mobile
+    // data kept the client on "Зареждане…" and every later load queued behind it), as arsten-activities readFile does.
+    // The race also ends a fetch that ignores the abort signal.
+    const ms = (opts && opts.ms) || 30000;
     const ctl = typeof AbortController === "function" ? new AbortController() : null;
-    const timer = ctl ? setTimeout(() => ctl.abort(), 30000) : null;
-    let res;
-    try { res = await (fetchImpl || fetch)(url, ctl ? { signal: ctl.signal } : undefined); } finally { if (timer) clearTimeout(timer); }
-    if (!res.ok) throw new Error("summary download " + res.status);
-    const r = parse(await res.text());
+    let timer = null;
+    const limit = new Promise((_, reject) => {
+      timer = setTimeout(() => { if (ctl) ctl.abort(); const e = new Error(`summary download: no answer in ${Math.round(ms / 1000)} s`); e.timeout = true; reject(e); }, ms);
+    });
+    limit.catch(() => {});
+    let text;
+    try {
+      const res = await Promise.race([(fetchImpl || fetch)(url, ctl ? { signal: ctl.signal } : undefined), limit]);
+      if (!res.ok) throw new Error("summary download " + res.status);
+      text = await Promise.race([res.text(), limit]);
+    } finally { clearTimeout(timer); }
+    const r = parse(text);
     if (!r.ok) throw new Error("summary file refused: " + r.errors.slice(0, 3).join("; "));
     return r.summary;
   }
@@ -533,5 +622,5 @@
   }
 
   return { TYPE, VERSION, FOLDER, NOTE_MAX, FORBIDDEN, matchStage, fileName, dayOfName, addDays, rebarState, rebarIndex, liveBuilder, trustCache, build, validate, toJson, parse,
-    listFiles, findFolder, listSummaries, readSummary, TRUSTED_GROUPS, uploaderOf, trustedUploaders, filterTrusted, pourType, headline, pourRecord, timelineOf, typeName, groupByType, isComplete, allNa };
+    listFiles, findFolder, listFolder, listSummaries, SITE_GROUPS, uploadedByTrusted, UNIT_RE, readSummary, TRUSTED_GROUPS, uploaderOf, trustedUploaders, filterTrusted, pourType, headline, pourRecord, timelineOf, typeName, groupByType, isComplete, allNa };
 });
