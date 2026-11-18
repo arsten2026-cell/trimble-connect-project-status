@@ -29,8 +29,10 @@
 //           saves at the same moment are fixed on read (the later entry gets the next free number, fixNumbers)
 //   status  pending / approved / doing / done / rejected; since = the day of the last status change
 //   qty     quantity >= 0 (or null) in unit (UNITS keys); sheet / page / where: the drawing, its page, the place in words
-//   link    the Connect share link of the marked drawing (a 2D view / ToDo; only https on connect.trimble.com) - never
-//           goes to the client
+//   link    the Connect share link of a marked view (only https on connect.trimble.com) - never goes to the client
+//   todo, todoNo  the Connect ToDo with the marked drawing (live test 18.11.2026: a ToDo has NO share link in Connect,
+//           so the panel lists the project's ToDos and keeps the chosen one's id and number "1028-11"; Отвори в Connect
+//           opens web.connect.trimble.com/projects/<project>/todo/<id>) - never goes to the client
 // The client gets a numbered entry only when it is ticked "за клиента", dated and done (review 18.11.2026: the summary
 // shows no status, so an approved work with a date read as done), as "ДР-005 · text" (forSummary): no status, quantity,
 // drawing or link. File version 2: an older panel refuses to save
@@ -46,7 +48,7 @@
 })(typeof self !== "undefined" ? self : this, function (B) {
   "use strict";
 
-  const TYPE = "arsten-activities", VERSION = 2;
+  const TYPE = "arsten-activities", VERSION = 3;   // 3 (18.11.2026 night): extra.todo / todoNo (a v2 panel would drop them)
   // additional works (ДР): statuses in their order, units (key -> shown as), the client sees only these statuses
   const STATUSES = ["pending", "approved", "doing", "done", "rejected"];
   const UNITS = { m: "m", m2: "m²", m3: "m³", pcs: "бр.", t: "t", kg: "kg", h: "h", set: "к-т" };
@@ -133,7 +135,8 @@
     const qty = cleanQty(e.qty), page = Math.floor(Number(e.page));
     return { no, status: STATUSES.includes(e.status) ? e.status : "pending", since: realDay(e.since) ? e.since : "",
       qty: qty == null || isNaN(qty) ? null : qty, unit: Object.prototype.hasOwnProperty.call(UNITS, e.unit) ? e.unit : "",
-      sheet: cleanLine(e.sheet, SHEET_MAX), page: page >= 1 && page <= 9999 ? page : null, where: cleanLine(e.where, WHERE_MAX), link: cleanLink(e.link) };
+      sheet: cleanLine(e.sheet, SHEET_MAX), page: page >= 1 && page <= 9999 ? page : null, where: cleanLine(e.where, WHERE_MAX), link: cleanLink(e.link),
+      todo: FILE_ID.test(String(e.todo || "")) ? String(e.todo) : "", todoNo: FILE_ID.test(String(e.todo || "")) ? cleanLine(e.todoNo, 30) : "" };
   }
   const isExtra = (x) => !!(x && x.extra && x.extra.no >= 1);
   /** The next free register number of a list. */
@@ -196,6 +199,7 @@
     if (x.unit !== undefined && x.unit !== "" && !Object.prototype.hasOwnProperty.call(UNITS, x.unit)) return "unit";
     if (x.link !== undefined && String(x.link || "").trim() && !cleanLink(x.link)) return "link";
     if (x.status !== undefined && !STATUSES.includes(x.status)) return "status";
+    if (x.todo !== undefined && String(x.todo || "") && !FILE_ID.test(String(x.todo))) return "todo";
     if (x.page !== undefined && x.page !== null && String(x.page).trim() !== "" && !/^[1-9]\d{0,3}$/.test(String(x.page).trim())) return "page";
     return "";
   }
@@ -249,7 +253,7 @@
         const chk = checkExtra(e.extra);
         if (chk) return { items: list, changed: false, error: chk };
         const patch = {};
-        for (const k of ["status", "qty", "unit", "sheet", "page", "where", "link"]) if (e.extra[k] !== undefined) patch[k] = e.extra[k];
+        for (const k of ["status", "qty", "unit", "sheet", "page", "where", "link", "todo", "todoNo"]) if (e.extra[k] !== undefined) patch[k] = e.extra[k];
         const nx = cleanExtra(Object.assign({}, cur.extra, patch));
         if (nx.status !== cur.extra.status) nx.since = today || (now || new Date()).toISOString().slice(0, 10);
         next.extra = nx;
@@ -302,16 +306,16 @@
     return { items: list, counts, done };
   }
   /** The register as CSV for Excel (BOM, ";" between fields, a decimal comma for bg), oldest number first. labels:
-   *  {head: [12 titles], status: {key: text}, unit: {key: text}, yes, no, lang}. Staff only: the link is in it.
+   *  {head: [13 titles], todoUrl?: (todo id) -> URL, status: {key: text}, unit: {key: text}, yes, no, lang}. Staff only: the link is in it.
    *  A cell starting with = + - @ gets a leading ' (no formula runs when it is opened in Excel). */
   function registerCsv(items, labels) {
     const L = labels || {}, bg = L.lang !== "en";
     const cell = (v) => { const s0 = String(v == null ? "" : v), s = /^[=+\-@\t\r]/.test(s0) ? "'" + s0 : s0; return /[";\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
     const num = (q) => (q == null ? "" : bg ? String(q).replace(".", ",") : String(q));
-    const head = L.head || ["No", "Date", "Work", "Status", "Since", "Qty", "Unit", "Drawing", "Page", "Place", "Link", "Client"];
+    const head = L.head || ["No", "Date", "Work", "Status", "Since", "Qty", "Unit", "Drawing", "Page", "Place", "Link", "Client", "ToDo"];
     const rows = register(items).items.slice().reverse().map((x) => [extraNo(x.extra.no), x.date, x.text, (L.status || {})[x.extra.status] || x.extra.status,
-      x.extra.since, num(x.extra.qty), (L.unit || UNITS)[x.extra.unit] || x.extra.unit, x.extra.sheet, x.extra.page || "", x.extra.where, x.extra.link,
-      x.client ? L.yes || "yes" : L.no || "no"]);
+      x.extra.since, num(x.extra.qty), (L.unit || UNITS)[x.extra.unit] || x.extra.unit, x.extra.sheet, x.extra.page || "", x.extra.where,
+      (x.extra.todo && typeof L.todoUrl === "function" ? L.todoUrl(x.extra.todo) : "") || x.extra.link, x.client ? L.yes || "yes" : L.no || "no", x.extra.todoNo || ""]);
     return "\uFEFF" + [head].concat(rows).map((r) => r.map(cell).join(";")).join("\r\n") + "\r\n";
   }
   /** Entries grouped by week (Monday first): [{week: "YYYY-MM-DD" (Monday), items}], newest week first; planned
