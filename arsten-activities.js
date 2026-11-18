@@ -21,6 +21,20 @@
 // file planted under it by anyone else is ignored and the photo is copied afresh under a unique name).
 // Every photo PUT / download goes through ArstenBackup.send (timeout + 429/503 retry, sweep 18.11.2026): a stalled
 // request on site mobile data ends with "Connect не отговаря…" instead of leaving the panel busy forever.
+// Additional works ("Допълнителни работи", ДР; user 18.11.2026, PLAN-ACTIVITIES-ON-DRAWINGS.md phase 1): an entry with
+// `extra` is an additional work outside the model and the contract - extra excavation, a cut opening, demolition. It
+// keeps everything an activity has, plus extra: {no, status, since, qty, unit, sheet, page, where, link}:
+//   no      the register number ДР-<no>, given at save from the freshly read list (largest + 1), never typed and never
+//           reused: a numbered entry cannot be deleted (it is rejected instead); two numbers that clash after two
+//           saves at the same moment are fixed on read (the later entry gets the next free number, fixNumbers)
+//   status  pending / approved / doing / done / rejected; since = the day of the last status change
+//   qty     quantity >= 0 (or null) in unit (UNITS keys); sheet / page / where: the drawing, its page, the place in words
+//   link    the Connect share link of the marked drawing (a 2D view / ToDo; only https on connect.trimble.com) - never
+//           goes to the client
+// The client gets a numbered entry only when it is ticked "за клиента", dated and done (review 18.11.2026: the summary
+// shows no status, so an approved work with a date read as done), as "ДР-005 · text" (forSummary): no status, quantity,
+// drawing or link. File version 2: an older panel refuses to save
+// over it ("written by a newer version - reload") instead of dropping the extra fields.
 // Pure except load / change / uploadPhoto, which take a Core client {req} (shared/arsten-backup.js) and the browser fetch.
 // Browser: window.ArstenActivities; node: require.
 (function (root, factory) {
@@ -32,7 +46,12 @@
 })(typeof self !== "undefined" ? self : this, function (B) {
   "use strict";
 
-  const TYPE = "arsten-activities", VERSION = 1;
+  const TYPE = "arsten-activities", VERSION = 2;
+  // additional works (ДР): statuses in their order, units (key -> shown as), the client sees only these statuses
+  const STATUSES = ["pending", "approved", "doing", "done", "rejected"];
+  const UNITS = { m: "m", m2: "m²", m3: "m³", pcs: "бр.", t: "t", kg: "kg", h: "h", set: "к-т" };
+  const CLIENT_STATUSES = ["done"];   // review 18.11.2026: the client summary has no status, so only DONE works go out
+  const SHEET_MAX = 60, WHERE_MAX = 120, LINK_MAX = 500, QTY_MAX = 1e9, NO_MAX = 99999;
   const DOCS = "_AM_Docs", DOCS_OLD = "_ArstenDocs";
   const FOLDER = [DOCS, "Activities"], FILE = "activities.json", PHOTOS = "Photos";
   const SAVE_TRIES = 3, LIST_SUSPECT = 100, FRESH_MS = 2000;
@@ -91,6 +110,44 @@
     return out;
   }
 
+  /** The register number as shown: ДР-007 (three digits at least). */
+  const extraNo = (n) => "ДР-" + String(Math.max(0, Math.floor(Number(n) || 0))).padStart(3, "0");
+  /** A Connect share link: https on connect.trimble.com or one of its subdomains (web.connect.trimble.com, app21…); else "". */
+  function cleanLink(v) {
+    const s = String(v == null ? "" : v).trim();
+    if (!s || s.length > LINK_MAX || /\s/.test(s)) return "";
+    const m = /^https:\/\/([a-z0-9.-]+)(?::443)?(?:[/?#]|$)/i.exec(s);
+    return m && /(^|\.)connect\.trimble\.com$/i.test(m[1]) ? s : "";
+  }
+  /** A quantity: a number >= 0 (a decimal comma is fine), rounded to 3 decimals; null when empty; NaN when not a number. */
+  function cleanQty(v) {
+    if (v == null || String(v).trim() === "") return null;
+    const n = typeof v === "number" ? v : Number(String(v).trim().replace(/\s/g, "").replace(",", "."));
+    if (!isFinite(n) || n < 0 || n > QTY_MAX) return NaN;
+    return Math.round(n * 1000) / 1000;
+  }
+  const cleanLine = (v, max) => String(v == null ? "" : v).replace(/\s+/g, " ").trim().slice(0, max).trim();
+  /** The extra part of an additional work, cleaned (a stored one: bad values dropped, never thrown). */
+  function cleanExtra(e) {
+    const no = Math.floor(Number(e.no));
+    const qty = cleanQty(e.qty), page = Math.floor(Number(e.page));
+    return { no, status: STATUSES.includes(e.status) ? e.status : "pending", since: realDay(e.since) ? e.since : "",
+      qty: qty == null || isNaN(qty) ? null : qty, unit: Object.prototype.hasOwnProperty.call(UNITS, e.unit) ? e.unit : "",
+      sheet: cleanLine(e.sheet, SHEET_MAX), page: page >= 1 && page <= 9999 ? page : null, where: cleanLine(e.where, WHERE_MAX), link: cleanLink(e.link) };
+  }
+  const isExtra = (x) => !!(x && x.extra && x.extra.no >= 1);
+  /** The next free register number of a list. */
+  const nextNo = (items) => (items || []).reduce((m, x) => (isExtra(x) ? Math.max(m, x.extra.no) : m), 0) + 1;
+  /** Two entries with the same number (two saves at the same moment): the earlier added keeps it, the later gets the
+   *  next free number. Deterministic, so every reader of the file shows the same numbers. Pure; returns a new list. */
+  function fixNumbers(items) {
+    const ex = (items || []).filter(isExtra).slice().sort((a, b) => a.extra.no - b.extra.no || (a.created < b.created ? -1 : a.created > b.created ? 1 : a.id < b.id ? -1 : 1));
+    const seen = new Set(), moved = new Map();
+    let top = nextNo(items) - 1;
+    for (const x of ex) { if (seen.has(x.extra.no)) moved.set(x.id, ++top); else seen.add(x.extra.no); }
+    if (!moved.size) return items;
+    return items.map((x) => (moved.has(x.id) ? Object.assign({}, x, { extra: Object.assign({}, x.extra, { no: moved.get(x.id) }) }) : x));
+  }
   /** One stored entry cleaned, or null when it is not usable (no id or no text). */
   function cleanItem(x) {
     if (!x || typeof x !== "object") return null;
@@ -99,8 +156,11 @@
     // only true is "for the client"; "false", 0, null and NO flag are not (sweep 18.11.2026: "for the client" is opt-in;
     // an entry edited by hand, imported, or written without the flag is never published by accident - toJson always
     // writes the flag, so every entry saved by the panel keeps its choice)
-    return { id, text, date: realDay(x.date) ? x.date : "", client: x.client === true,
+    const out = { id, text, date: realDay(x.date) ? x.date : "", client: x.client === true,
       created: String(x.created || "").slice(0, 40), photos: cleanPhotos(x.photos) };
+    const no = x.extra && typeof x.extra === "object" ? Math.floor(Number(x.extra.no)) : 0;
+    if (no >= 1 && no <= NO_MAX) out.extra = cleanExtra(x.extra);
+    return out;
   }
   /** Entries in the order shown: open (no date) first, by when added; then done, newest day first. */
   function sorted(items) {
@@ -126,14 +186,28 @@
     if (!list) throw new Error(FILE + " is not an activities list – fix it or restore an earlier version in Connect");
     const seen = new Set(), out = [];
     for (const x of list) { const c = cleanItem(x); if (c && !seen.has(c.id)) { seen.add(c.id); out.push(c); } }
-    return sorted(out).slice(0, ITEMS_MAX);
+    return fixNumbers(sorted(out).slice(0, ITEMS_MAX));
   }
   const toJson = (items) => JSON.stringify({ type: TYPE, version: VERSION, items: sorted(items).slice(0, ITEMS_MAX) }, null, 1);
 
+  /** The values given for an additional work checked: "" when fine, else the error ("qty", "unit", "link", "status", "page"). */
+  function checkExtra(x) {
+    if (x.qty !== undefined && x.qty !== null && String(x.qty).trim() !== "" && isNaN(cleanQty(x.qty))) return "qty";
+    if (x.unit !== undefined && x.unit !== "" && !Object.prototype.hasOwnProperty.call(UNITS, x.unit)) return "unit";
+    if (x.link !== undefined && String(x.link || "").trim() && !cleanLink(x.link)) return "link";
+    if (x.status !== undefined && !STATUSES.includes(x.status)) return "status";
+    if (x.page !== undefined && x.page !== null && String(x.page).trim() !== "" && !/^[1-9]\d{0,3}$/.test(String(x.page).trim())) return "page";
+    return "";
+  }
   /**
    * Apply one change to a list (pure).
-   * op: {add: {text, date, client, photos?}} | {edit: {id, text?, date?, client?, addPhotos?: [{id, name}], removePhoto?: id}}
+   * op: {add: {text, date, client, photos?, extra?: {qty?, unit?, sheet?, page?, where?, link?, status?}}}
+   *     | {edit: {id, text?, date?, client?, addPhotos?: [{id, name}], removePhoto?: id, extra?: {status?, qty?, …}}}
    *     | {remove: id}
+   * extra on add makes an additional work with the next number; on edit it changes the given fields (a status change
+   * stamps `since`). edit.expect {status?, client?}: the values the user saw; when the list has others: error "stale".
+   * More errors: "qty", "unit", "link", "status" (a bad value), "numbered" (a numbered entry is not
+   * deleted), "op" (extra on an activity).
    * Returns {items, changed, error, item}: error "text" (empty text), "date" (not a real day or after today), "gone" (the
    * entry was deleted meanwhile), "full" (ITEMS_MAX reached), "photos" (PHOTOS_MAX reached). today: "YYYY-MM-DD".
    * Photos are added to / removed from the FRESH list, so two people adding photos keep both.
@@ -148,28 +222,53 @@
       if (op.add.id && list.some((x) => x.id === op.add.id)) return { items: list, changed: false, item: list.find((x) => x.id === op.add.id) };   // already added (a retry)
       if (list.length >= ITEMS_MAX) return { items: list, changed: false, error: "full" };
       const item = { id: op.add.id || newId(), text, date, client: op.add.client === true, created: (now || new Date()).toISOString(), photos: cleanPhotos(op.add.photos) };
+      if (op.add.extra) {
+        // an additional work: the next number of THIS (fresh) list; a retry on a newer list takes that list's next one
+        const x = op.add.extra, chk = checkExtra(x);
+        if (chk) return { items: list, changed: false, error: chk };
+        const day = today || (now || new Date()).toISOString().slice(0, 10);
+        item.extra = cleanExtra(Object.assign({}, x, { no: nextNo(list), status: STATUSES.includes(x.status) ? x.status : "pending", since: day }));
+      }
       return { items: sorted(list.concat([item])), changed: true, item };
     }
     if (op && op.edit) {
       const i = list.findIndex((x) => x.id === op.edit.id);
       if (i < 0) return { items: list, changed: false, error: "gone" };
       const e = op.edit, cur = list[i], next = Object.assign({}, cur, { photos: (cur.photos || []).slice() });
+      // e.expect: what the user saw ({status?, client?}); the list now says otherwise -> "stale", nothing changed (final
+      // review 18.11.2026: a status button on a screen left open re-approved a work a colleague had rejected meanwhile)
+      if (e.expect && typeof e.expect === "object") {
+        if (e.expect.status !== undefined && (!cur.extra || cur.extra.status !== e.expect.status)) return { items: list, changed: false, error: "stale" };
+        if (e.expect.client !== undefined && cur.client !== e.expect.client) return { items: list, changed: false, error: "stale" };
+      }
       if (e.text !== undefined) { next.text = cleanText(e.text); if (!next.text) return { items: list, changed: false, error: "text" }; }
       if (e.date !== undefined) { if (!okDate(String(e.date))) return { items: list, changed: false, error: "date" }; next.date = String(e.date); }
       if (e.client !== undefined) next.client = !!e.client;
+      if (e.extra && typeof e.extra === "object") {
+        if (!isExtra(cur)) return { items: list, changed: false, error: "op" };   // an activity is not turned into an additional work
+        const chk = checkExtra(e.extra);
+        if (chk) return { items: list, changed: false, error: chk };
+        const patch = {};
+        for (const k of ["status", "qty", "unit", "sheet", "page", "where", "link"]) if (e.extra[k] !== undefined) patch[k] = e.extra[k];
+        const nx = cleanExtra(Object.assign({}, cur.extra, patch));
+        if (nx.status !== cur.extra.status) nx.since = today || (now || new Date()).toISOString().slice(0, 10);
+        next.extra = nx;
+      }
       if (e.removePhoto !== undefined) next.photos = next.photos.filter((p) => p.id !== e.removePhoto);
       if (Array.isArray(e.addPhotos) && e.addPhotos.length) {
         const add = cleanPhotos(e.addPhotos).filter((p) => !next.photos.some((q) => q.id === p.id));
         if (next.photos.length + add.length > PHOTOS_MAX) return { items: list, changed: false, error: "photos" };
         next.photos = next.photos.concat(add);
       }
-      const same = ["text", "date", "client"].every((k) => next[k] === cur[k]) && next.photos.map((p) => p.id).join() === (cur.photos || []).map((p) => p.id).join();
+      const same = ["text", "date", "client"].every((k) => next[k] === cur[k]) && next.photos.map((p) => p.id).join() === (cur.photos || []).map((p) => p.id).join()
+        && JSON.stringify(next.extra || null) === JSON.stringify(cur.extra || null);
       list[i] = next;
       return { items: sorted(list), changed: !same, item: next };
     }
     if (op && op.remove !== undefined) {
       const i = list.findIndex((x) => x.id === op.remove);
       if (i < 0) return { items: list, changed: false };   // already gone: nothing to do
+      if (isExtra(list[i])) return { items: list, changed: false, error: "numbered" };   // a register number is never freed: reject it instead
       list.splice(i, 1);
       return { items: list, changed: true };
     }
@@ -182,12 +281,38 @@
   function forSummary(items, date, opts) {
     if (!realDay(date)) return [];
     const from = addDays(date, -SUMMARY_DAYS);
-    return sorted((items || []).filter((x) => x && x.client && realDay(x.date) && x.date > from && x.date <= date))
+    return sorted((items || []).filter((x) => x && x.client && realDay(x.date) && x.date > from && x.date <= date
+      && (!x.extra || (isExtra(x) && CLIENT_STATUSES.includes(x.extra.status)))))
       .slice(0, SUMMARY_MAX).map((x) => {
-        const out = { text: cleanText(x.text), date: x.date };
+        // an additional work: its number and text only (no status, quantity, drawing or link)
+        const pre = isExtra(x) ? extraNo(x.extra.no) + " · " : "";
+        const out = { text: pre + cleanText(x.text).slice(0, TEXT_MAX - pre.length).trim(), date: x.date };
         if (opts && opts.photos && x.photos && x.photos.length) out.src = cleanPhotos(x.photos).slice(0, CLIENT_PHOTOS);
         return out;
       });
+  }
+  /** The register of additional works: {items (newest number first), counts {status: n}, done {unit: total qty}}. */
+  function register(items) {
+    const list = (items || []).filter(isExtra).sort((a, b) => b.extra.no - a.extra.no);
+    const counts = Object.fromEntries(STATUSES.map((k) => [k, 0])), done = {};
+    for (const x of list) {
+      counts[x.extra.status]++;
+      if (x.extra.status === "done" && x.extra.qty != null && x.extra.unit) done[x.extra.unit] = Math.round(((done[x.extra.unit] || 0) + x.extra.qty) * 1000) / 1000;
+    }
+    return { items: list, counts, done };
+  }
+  /** The register as CSV for Excel (BOM, ";" between fields, a decimal comma for bg), oldest number first. labels:
+   *  {head: [12 titles], status: {key: text}, unit: {key: text}, yes, no, lang}. Staff only: the link is in it.
+   *  A cell starting with = + - @ gets a leading ' (no formula runs when it is opened in Excel). */
+  function registerCsv(items, labels) {
+    const L = labels || {}, bg = L.lang !== "en";
+    const cell = (v) => { const s0 = String(v == null ? "" : v), s = /^[=+\-@\t\r]/.test(s0) ? "'" + s0 : s0; return /[";\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const num = (q) => (q == null ? "" : bg ? String(q).replace(".", ",") : String(q));
+    const head = L.head || ["No", "Date", "Work", "Status", "Since", "Qty", "Unit", "Drawing", "Page", "Place", "Link", "Client"];
+    const rows = register(items).items.slice().reverse().map((x) => [extraNo(x.extra.no), x.date, x.text, (L.status || {})[x.extra.status] || x.extra.status,
+      x.extra.since, num(x.extra.qty), (L.unit || UNITS)[x.extra.unit] || x.extra.unit, x.extra.sheet, x.extra.page || "", x.extra.where, x.extra.link,
+      x.client ? L.yes || "yes" : L.no || "no"]);
+    return "\uFEFF" + [head].concat(rows).map((r) => r.map(cell).join(";")).join("\r\n") + "\r\n";
   }
   /** Entries grouped by week (Monday first): [{week: "YYYY-MM-DD" (Monday), items}], newest week first; planned
    *  entries (no date) in a first group with week "". */
@@ -294,15 +419,41 @@
     } catch (e) { console.warn("activities: version history not read", e); return null; }
   }
   /** Someone else's change (from -> to: the list they read, the list they saved) replayed onto a newer list `head`, by
-   *  entry id: their added entries come back, their removed ones go, their edits win where the head still has the
-   *  entry as they read it (sweep 18.11.2026: a restore never uploads an old list over the current head). */
+   *  entry id: their added entries come back, their removed ones go, and their edits are merged FIELD BY FIELD (review
+   *  18.11.2026: a whole-entry rule dropped B's "Одобри" when A had changed the quantity of the same work meanwhile -
+   *  both told "saved"). A field (text, date, client, each extra.* key) they changed is taken where the head still has
+   *  it as they read it; their added / removed photos are added to / removed from the head's. No renumbering here:
+   *  A new work of theirs whose number a new work in the head already has takes the next free number; change() moves
+   *  its OWN new work when it clashes with theirs. fixNumbers on read stays the last resort for hand-edited files. */
   function replay(head, from, to) {
     const byId = (l) => new Map((l || []).map((x) => [x.id, x]));
     const F = byId(from), T = byId(to), out = byId(head);
     const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const merge = (h, f, t) => {
+      const n = Object.assign({}, h);
+      for (const k of ["text", "date", "client"]) if (!same(t[k], f[k]) && same(h[k], f[k])) n[k] = t[k];
+      const fIds = new Set((f.photos || []).map((p) => p.id)), tIds = new Set((t.photos || []).map((p) => p.id));
+      let ph = (h.photos || []).filter((p) => !(fIds.has(p.id) && !tIds.has(p.id)));
+      for (const p of t.photos || []) if (!fIds.has(p.id) && !ph.some((q) => q.id === p.id)) ph = ph.concat([p]);
+      n.photos = ph.slice(0, PHOTOS_MAX);
+      if (h.extra && t.extra && f.extra) {
+        const e = Object.assign({}, h.extra);
+        for (const k of Object.keys(t.extra)) if (k !== "no" && k !== "since" && !same(t.extra[k], f.extra[k]) && same(h.extra[k], f.extra[k])) e[k] = t.extra[k];
+        if (e.status !== h.extra.status) e.since = t.extra.since;
+        n.extra = e;
+      }
+      return n;
+    };
     for (const [id, x] of T) {
-      if (!F.has(id)) { if (!out.has(id)) out.set(id, x); }
-      else if (!same(F.get(id), x) && out.has(id) && same(out.get(id), F.get(id))) out.set(id, x);
+      if (!F.has(id)) {
+        if (out.has(id)) continue;
+        // their new work whose number another new work in the head took meanwhile: theirs moves on. Its author may
+        // already have been shown the old number (three saves within about a second); the register then shows the
+        // new one - accepted, rare (final review 18.11.2026)
+        const clash = isExtra(x) && [...out.values()].some((y) => isExtra(y) && y.extra.no === x.extra.no);
+        out.set(id, clash ? Object.assign({}, x, { extra: Object.assign({}, x.extra, { no: nextNo([...out.values()].concat([x])) }) }) : x);
+      }
+      else if (!same(F.get(id), x) && out.has(id)) out.set(id, merge(out.get(id), F.get(id), x));
     }
     for (const id of F.keys()) if (!T.has(id)) out.delete(id);
     return sorted([...out.values()]);
@@ -316,6 +467,7 @@
       if (!x || !item) return false;
       const ids = new Set((x.photos || []).map((p) => p.id));
       return ["text", "date", "client"].every((k) => x[k] === item[k]) && (item.photos || []).every((p) => ids.has(p.id))
+        && (!op.edit.extra || JSON.stringify(Object.assign({}, x.extra, { no: 0, since: "" })) === JSON.stringify(Object.assign({}, item.extra, { no: 0, since: "" })))
         && (op.edit.removePhoto === undefined || !ids.has(op.edit.removePhoto));
     }
     return true;
@@ -354,7 +506,16 @@
       const cur = base || (await load(o.core, o.projectId, o.fetch, folderHint));
       base = null;
       if (cur.folderId) folderHint = cur.folderId;
-      const start = theirs ? replay(cur.items, theirs.from, theirs.to) : cur.items;
+      // review 18.11.2026: our new work already in the head (our upload) is set aside while theirs is replayed, then put
+      // back; when its number clashes with theirs it moves to the next free number - theirs keeps the number its author
+      // was already shown (ours was not confirmed to anyone yet). Only the number changes: what others did to our entry
+      // since (an approval, photos) stays (re-review: rebuilding it from op.add wiped that)
+      const mine = theirs && op.add && op.add.extra && op.add.id ? cur.items.find((x) => x.id === op.add.id && isExtra(x)) : null;
+      let start = theirs ? replay(mine ? cur.items.filter((x) => x !== mine) : cur.items, theirs.from, theirs.to) : cur.items;
+      if (mine) {
+        const clash = start.some((x) => isExtra(x) && x.extra.no === mine.extra.no);
+        start = sorted(start.concat([clash ? Object.assign({}, mine, { extra: Object.assign({}, mine.extra, { no: nextNo(start) }) }) : mine]));
+      }
       // their list still has to go back up when it differs from the head (our upload replaced it), even when our change
       // no longer applies to it (they removed the entry, or did the same)
       const restoring = !!theirs && toJson(start) !== toJson(cur.items);
@@ -679,6 +840,6 @@
     return (d && (d.url || d.downloadUrl || d.href)) || "";
   }
 
-  return { COPY_POOL, CLIENT_PHOTOS, SOURCE_MAX, CLIENT_FOLDER, clientName, copyForClient, TYPE, VERSION, FOLDER, FILE, PHOTOS, TEXT_MAX, ITEMS_MAX, PHOTOS_MAX, SUMMARY_DAYS, SUMMARY_MAX, parse, toJson, sorted, apply,
+  return { STATUSES, UNITS, CLIENT_STATUSES, extraNo, isExtra, nextNo, fixNumbers, cleanLink, cleanQty, register, registerCsv, COPY_POOL, CLIENT_PHOTOS, SOURCE_MAX, CLIENT_FOLDER, clientName, copyForClient, TYPE, VERSION, FOLDER, FILE, PHOTOS, TEXT_MAX, ITEMS_MAX, PHOTOS_MAX, SUMMARY_DAYS, SUMMARY_MAX, parse, toJson, sorted, apply,
     forSummary, byWeek, weekOf, addDays, load, change, replay, uploadPhoto, photoUrl, photoName, thumbName, realDay, findFolder };
 });
