@@ -463,6 +463,24 @@
     const byPour = new Map(sumOf(state.sumDay).pours.map((p) => [p.label, CS.pourRecord(p)]));
     return (o) => byPour.get(o.pour) || null;
   }
+  /**
+   * The colour of each object from the shown published summary (user 22.11.2026). The summary has one entry per pour,
+   * so a whole pour gets one colour: the last step done for ALL its objects, as before - but a pour where a later step
+   * is only partly done (TAKT 1 "в процес" in every column) was "not started" and stayed see-through grey for the
+   * client. Such a pour is now "В процес" (the client's word for it). Concrete poured and only the stripping partly
+   * done stays "Бетон излят".
+   */
+  function summaryStage() {
+    const sum = sumOf(state.sumDay), byPour = new Map(sum.pours.map((p) => [p.label, p]));
+    const ids = S.STEPS.map((x) => x.id);
+    return (o) => {
+      const p = byPour.get(o.pour);
+      if (!p) return S.NOT_STARTED;
+      const st = S.stageOf(CS.pourRecord(p)), at = ids.indexOf(st.id);
+      const partial = ids.some((id, i) => i > at && id !== "stripped" && p.steps && p.steps[id] && p.steps[id].done > 0 && !CS.isComplete(p, id));
+      return partial ? S.REBAR_FIRST : st;
+    };
+  }
   // Sweep 18.11.2026 (finding 4): setObjectState fires onModelStateChanged; a same-model event within OWN_MS of our own
   // colouring is ours, so loadOnce does not repaint (which fired the event again: a repaint every 1.5 s with "Оцвети").
   const OWN_MS = 5000;
@@ -476,9 +494,9 @@
     // finding 4: no pour objects loaded: nothing to colour, so the rest of the model is not ghosted either
     if (!state.coloured || !state.objects.length) return api.viewer.setObjectState(undefined, { color: "reset", opacity: 1 });
     await api.viewer.setObjectState(undefined, { color: GHOST, opacity: GHOST_OPACITY });   // everything that is not a pour
-    const rec = recordOf();
+    const stageFor = inSummary() ? summaryStage() : ((rec) => (o) => S.stageOf(rec(o)))(recordOf());
     const buckets = STAGES.map(() => []);
-    for (const o of state.objects) buckets[STAGES.indexOf(S.stageOf(rec(o)))].push(o);
+    for (const o of state.objects) buckets[STAGES.indexOf(stageFor(o))].push(o);
     // user 22.11.2026: in "Виж като клиент" the colours showed only after a click in the model, slowly. The groups do
     // not overlap, so they go out together (were one after another), and the viewer is then asked to draw again: the
     // camera it has now is set back with no animation (setObjectState alone may wait for the next user interaction)
