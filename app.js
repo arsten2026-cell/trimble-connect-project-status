@@ -485,6 +485,16 @@
   // colouring is ours, so loadOnce does not repaint (which fired the event again: a repaint every 1.5 s with "Оцвети").
   const OWN_MS = 5000;
   let ownStateAt = 0;
+  /** Live test 22.11.2026: right after a stage loads, Connect is still finishing the model and drops the colours set
+   *  meanwhile (the view stayed uncoloured until "Оцвети" was ticked again or the model was clicked); its own "model
+   *  changed" event then falls in OWN_MS and is taken for ours. After a load, the colours are set once more a little
+   *  later. */
+  let againTimer = null;
+  function colourAgain() {
+    clearTimeout(againTimer);
+    againTimer = setTimeout(() => { if (state.coloured && state.objects.length) guarded(applyColours); }, 2500);
+    if (againTimer && againTimer.unref) againTimer.unref();
+  }
   async function applyColours() {
     ownStateAt = Date.now();
     try { return await applyColours2(); } finally { ownStateAt = Date.now(); }
@@ -1358,7 +1368,7 @@
         setStatus(() => `${t("published")} ${fmtDate(state.sumDay)}`);
         render();
         await poursP;
-        if (state.coloured) await applyColours();
+        if (state.coloured) { await applyColours(); colourAgain(); }
         return true;
       }
       state.look = "live"; state.sumDay = "";
@@ -1412,7 +1422,7 @@
     setStatus(state.staffStatus);
     render();
     prefillNote(gen);   // after the first paint (finding 1)
-    if (state.coloured) await applyColours();
+    if (state.coloured) { await applyColours(); colourAgain(); }
     // B-Client 2: steel totals for the staff live view, after the first screen (read-only; publishing reads them again).
     // Round 17 M1: only when the model set changed or the last read is older than 5 minutes.
     refreshSteel(key);
