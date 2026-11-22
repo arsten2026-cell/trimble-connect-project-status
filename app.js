@@ -479,9 +479,20 @@
     const rec = recordOf();
     const buckets = STAGES.map(() => []);
     for (const o of state.objects) buckets[STAGES.indexOf(S.stageOf(rec(o)))].push(o);
-    for (let k = 0; k < STAGES.length; k++) {
-      if (buckets[k].length) await api.viewer.setObjectState(selector(buckets[k]), { color: STAGES[k].colour, opacity: k === 0 ? NOT_STARTED_OPACITY : 1 });
-    }
+    // user 22.11.2026: in "Виж като клиент" the colours showed only after a click in the model, slowly. The groups do
+    // not overlap, so they go out together (were one after another), and the viewer is then asked to draw again: the
+    // camera it has now is set back with no animation (setObjectState alone may wait for the next user interaction)
+    await Promise.all(buckets.map((b, k) => (b.length ? api.viewer.setObjectState(selector(b), { color: STAGES[k].colour, opacity: k === 0 ? NOT_STARTED_OPACITY : 1 }) : null)));
+    await redrawViewer(api);
+  }
+  /** Make the 3D viewer draw now: the current camera set again without animation. Best effort (an older Workspace API
+   *  without getCamera, or a camera it cannot give back, leaves it as before). */
+  async function redrawViewer(api) {
+    try {
+      if (!api.viewer.getCamera || !api.viewer.setCamera) return;
+      const cam = await api.viewer.getCamera();
+      if (cam && typeof cam === "object") await api.viewer.setCamera(cam, { animationTime: 0 });
+    } catch (e) { console.warn("viewer redraw", e); }
   }
 
   // ---------- rendering ----------
